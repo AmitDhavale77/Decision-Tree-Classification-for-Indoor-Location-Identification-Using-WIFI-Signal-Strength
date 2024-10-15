@@ -6,6 +6,7 @@ def load_data(filename):
     """ Load data from input file
 
     Return X, Y arrays
+    @aps124
     """
 
     pass
@@ -13,6 +14,7 @@ def load_data(filename):
 
 def create_node(attribute, value, left, right, leaf=False):
     """
+    @amit - convert to use class for node
     """
 
     node = {
@@ -28,6 +30,7 @@ def create_node(attribute, value, left, right, leaf=False):
 
 def calculate_entropy():
     """
+    @ola
     """
 
     pass
@@ -35,6 +38,8 @@ def calculate_entropy():
 
 def calculate_information_gain():
     """
+    @ola - related to above
+    see if integral option is better (we think no but worth checking?)
     """
 
     pass
@@ -42,20 +47,24 @@ def calculate_information_gain():
 
 def find_split():
     """
+    This function is the big one. It should determine the optimal attribute and value to split on
+    @lauren to investigate and possibly delegate
     """
 
     pass
 
 
 def split_data():
-    """
+    """ This should take in results from above and acutally split the data
+    @lauren
     """
 
     pass
 
 
 def decision_tree_learning(dataset, depth=0):
-    """
+    """ This code is a placeholder
+    Once we do the other parts, can tackle this bit
     """
 
     # If all data in dataset has the same label, create leaf node
@@ -75,6 +84,8 @@ def decision_tree_learning(dataset, depth=0):
 
 def visualize_tree():
     """ BONUS FUNCTION: Plot tree visualization
+
+    Tackle this later
     """
 
     pass
@@ -82,13 +93,14 @@ def visualize_tree():
 
 def evaluate_tree(test_data, trained_tree):
     """ Evaluate accuracy of trained tree using test data
+    @aanish
     """
 
     pass
 
 
 def prune_tree():
-    """
+    """ wait till next week's lecture to see how to implement this
     """
 
     pass
