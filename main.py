@@ -12,6 +12,11 @@ def load_data(filename):
     pass
 
 
+def normalise_data(data):
+    """  Normalise the data
+    @???
+    """
+
 def create_node(attribute, value, left, right, leaf=False):
     """
     @amit - convert to use class for node
@@ -45,18 +50,47 @@ def calculate_information_gain():
     pass
 
 
-def find_split():
+def find_split(dataset):
     """
     This function is the big one. It should determine the optimal attribute and value to split on
     @lauren to investigate and possibly delegate
+
+    Args: dataset - TODO decide on data structure
+
+    Returns: (feature, (split_point, information_gain))
+                where split point is the value in the feature to split on 
+                so left split is values <= split_point and 
+                right split is values > split_point
     """
+    # calculate information gain at each potential split point for each feature
+    best_feature_split = []
+    for feature in dataset:
+        feature_split_ig = []
+        for split_value in feature:
+            # split data into two groups based on split point
+            pass
+            # calculate information gain for each split point (feature data < value)
+            split_point_ig = calculate_information_gain(split_data)
+            feature_split_ig.append((split_value, split_point_ig))
+        # select feature with highest information gain
+        best_split_for_feature = max(feature_split_ig, key=lambda x: x[1])
+        # add best split for feature to list
+        best_feature_split.append((feature, best_split_for_feature))
+    # select feature with highest information gain
+    optimum_split = max(best_feature_split, key=lambda x: x[1][1])
+    
+    return optimum_split
 
-    pass
 
 
-def split_data():
+def split_data(data, split_value):
     """ This should take in results from above and acutally split the data
     @lauren
+
+    Args: data - TODO decide on data structure
+        split_value - value to split on (left split is values <= split_point and right split is values > split_point)
+
+    Returns: left_data, right_data
     """
 
     pass
