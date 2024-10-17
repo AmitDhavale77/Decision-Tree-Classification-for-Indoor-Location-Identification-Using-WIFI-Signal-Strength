@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+from binary_node import Binarytree
 
 def load_data(filename):
     """ Load data from input file
@@ -22,15 +22,9 @@ def create_node(attribute, value, left, right, leaf=False):
     @amit - convert to use class for node
     """
 
-    node = {
-        'attribute': attribute,  # str
-        'value': value,  # float
-        'left': left,  # <node>
-        'right': right,  # <node>
-        'leaf': leaf  # False,
-    }
+    binary_node = Binarytree(attribute, value, left, right, leaf=False)
 
-    return node
+    return binary_node
 
 
 def calculate_entropy():
