@@ -1,11 +1,9 @@
 class Binarytree():
 
-    def __init__(self, attribute, value, left=None, right=None, is_leaf=False):
-        
-        self.attribute = attribute
+    def __init__(self, feature=None, value=None, left=None, right=None, leaf_val=None):
+        # TODO: should this be a dict?
+        self.feature = feature
         self.value = value
         self.left = left
         self.right = right
-        self.is_leaf = is_leaf
-
-    
+        self.leaf_val = leaf_val
