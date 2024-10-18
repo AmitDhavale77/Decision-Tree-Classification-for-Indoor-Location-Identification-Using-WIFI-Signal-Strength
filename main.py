@@ -12,11 +12,6 @@ def load_data(filename):
     pass
 
 
-def normalise_data(data):
-    """  Normalise the data
-    @???
-    """
-
 def create_node(attribute, value, left, right, leaf=False):
     """
     @amit - convert to use class for node
@@ -32,13 +27,13 @@ def calculate_entropy(data):
     data : np.array with last column indicating classes
     @ola
     """
+
     if data.ndim == 1:
         return 0 # if there is only one instance then entropy is 0 
     else:
         dict_classes = {} # dictionary counting how many elements are in particular classes
         total = len(data) # store total number of instances
-        for row in data:
-            class_row = row[-1] # store class of particular instance (row)
+        for class_row in data:
             if class_row in dict_classes:
                 dict_classes[class_row] += 1
             else:
@@ -51,7 +46,7 @@ def calculate_entropy(data):
         return entropy
 
 
-def calculate_information_gain(dataset, subsets):
+def calculate_information_gain(Y, subsets):
     """
     @ola - related to above
     see if integral option is better (we think no but worth checking?)
@@ -59,17 +54,18 @@ def calculate_information_gain(dataset, subsets):
     dataset : np.array with last column indicating classes
 
     subsets : array of k subsets of dataset
+        subsets = (Yleft, Yright)
     """
 
-    ig = calculate_entropy(dataset) 
-    total_length = len(dataset)
+    ig = calculate_entropy(Y) 
+    total_length = len(Y)
     for subset in subsets:
         ig -= (len(subset)/total_length) * calculate_entropy(subset)
 
     return ig
 
 
-def find_split(dataset):
+def find_split(X, Y):
     """
     This function is the big one. It should determine the optimal attribute and value to split on
     @lauren to investigate and possibly delegate
@@ -82,29 +78,41 @@ def find_split(dataset):
                 right split is values > split_point
     """
     # calculate information gain at each potential split point for each feature
-    best_feature_split = []
-    for feature in dataset:
-        feature_split_ig = []
-        for split_value in feature:
+    max_info_gain = 0
+    best_feature = None
+    best_value = None
+
+    # TODO: confirm this?
+    for feature in range(X.shape[1]):
+
+        # Sort X by feature
+        Xsorted, Ysorted = sort(X, Y, feature). # TODO: implement sort
+
+        midpoints = get_midpoints(Xsorted, feature) # TODO: implement get_midpoints
+        for midpoint in midpoints:
             # split data into two groups based on split point
-            pass
+            Xleft, Yleft, Xright, Yright = split_data(Xsorted, Ysorted, feature, midpoint)
             # calculate information gain for each split point (feature data < value)
-            split_point_ig = calculate_information_gain(split_data)
-            feature_split_ig.append((split_value, split_point_ig))
-        # select feature with highest information gain
-        best_split_for_feature = max(feature_split_ig, key=lambda x: x[1])
-        # add best split for feature to list
-        best_feature_split.append((feature, best_split_for_feature))
-    # select feature with highest information gain
-    optimum_split = max(best_feature_split, key=lambda x: x[1][1])
+            split_point_ig = calculate_information_gain(Ysorted, np.array(Yleft, Yright))
+            if split_point_ig > max_info_gain:
+                max_info_gain = split_point_ig
+                best_feature = feature
+                best_value = midpoint
     
-    return optimum_split
+    return best_feature, best_value
 
 
+def sort_data():
+    pass
 
-def split_data(data, split_value):
+
+def get_midpoints():
+    pass
+
+
+def split_data(X, Y, split_attribute, split_value):
     """ This should take in results from above and acutally split the data
-    @lauren
+    @amit
 
     Args: data - TODO decide on data structure
         split_value - value to split on (left split is values <= split_point and right split is values > split_point)
@@ -135,7 +143,7 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     # If all data in dataset has the same label, create leaf node
     if all(Y) is the same:
         return create_node(None, None, None, None, leaf_val=whatever Y is)
-    
+
     split_attribute, split_value = find_split(X, Y)
     Xleft, Yleft, Xright, Yright = split_data(X, Y, split_attribute, split_value)
     
