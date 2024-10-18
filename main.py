@@ -115,25 +115,36 @@ def split_data(data, split_value):
     pass
 
 
-def decision_tree_learning(dataset, depth=0):
+def decision_tree_learning(X, Y, depth=0, max_depth=None):
     """ This code is a placeholder
     Once we do the other parts, can tackle this bit
+
+    Args:
+        X train
+        Y train,
+        depth, current depth
+        max depth = how far should we go?
+
+    Returns:
+        tree (nested dictionary representing entire tree and branches and leafs)
     """
 
+    if depth == max_depth:
+        return
+
     # If all data in dataset has the same label, create leaf node
-    #if ...
-        #return create_node(None, None, None, None, leaf=True)
+    if all(Y) is the same:
+        return create_node(None, None, None, None, leaf_val=whatever Y is)
     
-    #split_attribute, split_value = find_split()
-    #left_data, right_data = split_data(split_attribute, split_value)
+    split_attribute, split_value = find_split(X, Y)
+    Xleft, Yleft, Xright, Yright = split_data(X, Y, split_attribute, split_value)
     
-    #node = create_node(...)
+    left_branch, left_depth = decision_tree_learning(Xleft, Yleft, depth + 1)
+    right_branch, right_depth = decision_tree_learning(Xright, Yright, depth + 1)
 
-    #left_branch, left_depth = decision_tree_learning(left_data, depth + 1)
-    #right_branch, right_depth = decision_tree_learning(right_data, depth + 1)
+    node = create_node(split_attribute, split_value, left_branch, right_branch)
 
-    #return node, max(left_depth, right_depth)
-    pass
+    return node, max(left_depth, right_depth)
 
 
 def visualize_tree():
