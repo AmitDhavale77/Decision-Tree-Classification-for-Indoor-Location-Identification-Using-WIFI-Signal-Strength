@@ -2,14 +2,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 from binary_node import Binarytree
 
-def load_data(filename):
-    """ Load data from input file
 
-    Return X, Y arrays
-    @aps124
+def load_data(filename):
+    """ Read in the dataset from the specified filepath
+
+    Args:
+        filepath (str): The filepath to the dataset file
+
+    Returns:
+        tuple: returns a tuple of (x, y), each being a numpy array. 
+               - x is a numpy array with shape (N, K), 
+                   where N is the number of instances
+                   K is the number of features/attributes corresponding to WIFI
+                   signals from different receivers
+               - y is a numpy array with shape (N, ), and each element should be 
+                   an integer representing room number from 0 to C-1 where C
+                   is the number of classes
+               - classes : a numpy array with shape (C, ), which contains the 
+                   unique class labels corresponding to the integers in y
     """
 
-    pass
+    X = np.loadtxt(filename, dtype=np.float64, usecols=(0,1,2,3,4,5,6))
+    Y = np.loadtxt(filename, usecols=(7)).astype(np.int64)
+    # classes = np.unique(Y)
+    return X, Y
 
 
 def create_node(attribute, value, left, right, leaf=False):
