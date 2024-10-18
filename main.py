@@ -27,21 +27,46 @@ def create_node(attribute, value, left, right, leaf=False):
     return binary_node
 
 
-def calculate_entropy():
+def calculate_entropy(data):
     """
+    data : np.array with last column indicating classes
     @ola
     """
+    if data.ndim == 1:
+        return 0 # if there is only one instance then entropy is 0 
+    else:
+        dict_classes = {} # dictionary counting how many elements are in particular classes
+        total = len(data) # store total number of instances
+        for row in data:
+            class_row = row[-1] # store class of particular instance (row)
+            if class_row in dict_classes:
+                dict_classes[class_row] += 1
+            else:
+                dict_classes[class_row] = 1
+        
+        entropy = 0
+        for element in dict_classes.values():
+            entropy -= ((element/total)*np.log2(element/total)) # calculate entropy
 
-    pass
+        return entropy
 
 
-def calculate_information_gain():
+def calculate_information_gain(dataset, subsets):
     """
     @ola - related to above
     see if integral option is better (we think no but worth checking?)
+    
+    dataset : np.array with last column indicating classes
+
+    subsets : array of k subsets of dataset
     """
 
-    pass
+    ig = calculate_entropy(dataset) 
+    total_length = len(dataset)
+    for subset in subsets:
+        ig -= (len(subset)/total_length) * calculate_entropy(subset)
+
+    return ig
 
 
 def find_split(dataset):
@@ -96,18 +121,19 @@ def decision_tree_learning(dataset, depth=0):
     """
 
     # If all data in dataset has the same label, create leaf node
-    if ...
-        return create_node(None, None, None, None, leaf=True)
+    #if ...
+        #return create_node(None, None, None, None, leaf=True)
     
-    split_attribute, split_value = find_split()
-    left_data, right_data = split_data(split_attribute, split_value)
+    #split_attribute, split_value = find_split()
+    #left_data, right_data = split_data(split_attribute, split_value)
     
-    node = create_node(...)
+    #node = create_node(...)
 
-    left_branch, left_depth = decision_tree_learning(left_data, depth + 1)
-    right_branch, right_depth = decision_tree_learning(right_data, depth + 1)
+    #left_branch, left_depth = decision_tree_learning(left_data, depth + 1)
+    #right_branch, right_depth = decision_tree_learning(right_data, depth + 1)
 
-    return node, max(left_depth, right_depth)
+    #return node, max(left_depth, right_depth)
+    pass
 
 
 def visualize_tree():
