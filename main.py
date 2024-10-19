@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from binary_node import Binarytree
@@ -265,23 +264,14 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
         )  # Set leaf value to the label of Y
 
     split_attribute, split_value = find_split(X, Y)
-    Xleft, Yleft, Xright, Yright = split_data(X, Y, split_attribute, split_value)
+    X_left, Y_left, X_right, Y_right = split_data(X, Y, split_attribute, split_value)
 
-    left_branch, left_depth = decision_tree_learning(Xleft, Yleft, depth + 1)
-    right_branch, right_depth = decision_tree_learning(Xright, Yright, depth + 1)
+    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1)
+    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1)
 
     node = create_node(split_attribute, split_value, left_branch, right_branch)
 
     return node, max(left_depth, right_depth)
-
-
-def visualize_tree():
-    """BONUS FUNCTION: Plot tree visualization
-
-    Tackle this later
-    """
-
-    pass
 
 
 def evaluate_tree(test_data, trained_tree):
