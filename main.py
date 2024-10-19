@@ -78,19 +78,17 @@ def create_node(feature, value, left, right):
 
 def calculate_entropy(data):
     """
-    data : np.array with last column indicating classes
+    data : np.array with 1 dimension
     @ola
     """
 
-    if len(data) == 1 or len(data) == 1:
+    if len(data) == 1:
         return 0  # if there is only one instance then entropy is 0
     else:
-        dict_classes = (
-            {}
-        )  # dictionary counting how many elements are in particular classes
+        dict_classes = {}  # dictionary counting how many elements are in particular classes
         total = len(data)  # store total number of instances
         for class_row in data:
-            if class_row in dict_classes:
+            if class_row in dict_classes.keys():
                 dict_classes[class_row] += 1
             else:
                 dict_classes[class_row] = 1
@@ -226,19 +224,30 @@ def split_data(X, Y, split_attribute, split_value):
     """This should take in results from above and acutally split the data
     @amit
 
-    Args: data - TODO decide on data structure
-        split_value - value to split on (left split is values <= split_point and right split is values > split_point)
+    Args: 
+        X : data
+        Y : labels
+        aplit_attribute (int) : column depeneding on which the split is done
+        split_value (float) : value to split on (left split is values <= split_point and right split is values > split_point)
 
-    Returns: left_data, right_data
+        data - TODO decide on data structure
+       
+    Returns: 
+        X_left, Y_left, X_right, Y_right
     """
+    flag = True
+    index = 0
+    while flag:
+        if X[index][split_attribute] <= split_value:
+            index += 1
+        else:
+            flag = False
+    X_left = X[:index]
+    Y_left = Y[:index]
+    X_right = X[index:]
+    Y_right = Y[index:]
 
-    ind_mid = X[:,split_attribute] > split_value
-    X_right = X[ind_mid]
-    X_left = X[~ind_mid]
-
-    Y_right = Y[ind_mid]
-    Y_left = Y[~ind_mid]
-    return X_left, Y_left, X_right, Y_right
+    return X_left, Y_left, X_right, Y_right 
 
 
 def check_all_elements_same(arr):
@@ -317,10 +326,6 @@ if __name__ == "__main__":
     print(depth_reached)
     visualize_tree(decision_tree)
 
-    tree_to_json(decision_tree, 'tree.json')
-
-    a = json_to_tree('tree.json')
-    visualize_tree(a)
     # print(X_train.shape)
     # print(X_test.shape)
     # print(X_cv.shape)
