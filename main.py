@@ -140,17 +140,21 @@ def find_split(X, Y):
         # Sort X by feature
         X_sorted, Y_sorted = sort_data(X, Y, feature)
 
-        midpoints = get_midpoints(X_sorted, feature) # TODO: implement get_midpoints
+        # Get midpoints of the feature column of sorted X
+        midpoints = get_midpoints(X_sorted, feature)
         for midpoint in midpoints:
-            # split data into two groups based on split point
-            Xleft, Yleft, Xright, Yright = split_data(
+            # Split data into two groups based on split point
+            _, Y_left, _, Y_right = split_data(
                 X_sorted, Y_sorted, feature, midpoint
             )
-            # calculate information gain for each split point (feature data < value)
+
+            # Calculate information gain for each split point (feature data < value)
             split_point_ig = calculate_information_gain(
-                Y_sorted, np.array(Yleft, Yright)
+                Y_sorted, np.array(Y_left, Y_right)
             )
 
+            # If new split point is larger than the previous maximum, set it to be
+            # the current best split option
             if split_point_ig > max_info_gain:
                 max_info_gain = split_point_ig
                 best_feature = feature
@@ -224,6 +228,17 @@ def split_data(X, Y, split_attribute, split_value):
     pass
 
 
+
+def check_all_elements_same(arr):
+    """ Check if all elements in a numpy array are the same
+    """
+
+    if np.all(arr == arr[0]):
+        return True, arr[0]
+    else:
+        return False, None
+
+
 def decision_tree_learning(X, Y, depth=0, max_depth=None):
     """This code is a placeholder
     Once we do the other parts, can tackle this bit
@@ -238,16 +253,16 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
         tree (nested dictionary representing entire tree and branches and leafs)
     """
 
+    # End decision tree learning if max depth has been met
     if depth == max_depth:
         return
 
-    # TODO: fix this bit
-    # If all data in dataset has the same label, create leaf node
-    same = None
-    if all(Y) is same:  # TODO turn into real check
+    # Check if all Y has the same label and if so create a leaf node
+    y_has_same_label, label_value = check_all_elements_same(Y)
+    if y_has_same_label:
         return create_node(
-            None, None, None, None, leaf_val=same
-        )  # set leaf value to the label of Y
+            None, None, None, None, leaf_val=label_value
+        )  # Set leaf value to the label of Y
 
     split_attribute, split_value = find_split(X, Y)
     Xleft, Yleft, Xright, Yright = split_data(X, Y, split_attribute, split_value)
