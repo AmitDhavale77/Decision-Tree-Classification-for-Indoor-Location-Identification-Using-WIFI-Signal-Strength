@@ -126,8 +126,21 @@ def sort_data():
     pass
 
 
-def get_midpoints():
-    pass
+def get_midpoints(X, feature):
+    """
+    Calculate the midpoints between consecutive values in the sorted feature data
+    Args: 
+        X (array) : sorted array of data
+        feature (int) - the feature to calculate midpouints for 
+    
+    Returns:
+        array of midpoints of length len(X) - 1
+    """
+    midpoints = []
+    for i in range(len(X) - 1):
+        midpoints.append((X[i] + X[i+1]) / 2)
+        
+    return np.array(midpoints)
 
 
 def split_data(X, Y, split_attribute, split_value):
