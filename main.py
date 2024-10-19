@@ -1,6 +1,6 @@
 import numpy as np
 
-from binary_node import Binarytree
+from visualize import visualize_tree
 
 
 def load_data(filename):
@@ -61,14 +61,19 @@ def train_test_split(X, Y, test_proportion, random_seed):
     return X_train, Y_train, X_test, Y_test
 
 
-def create_node(attribute, value, left, right, leaf=False):
+def create_node(feature, value, left, right):
     """
     @amit - convert to use class for node
     """
 
-    binary_node = Binarytree(attribute, value, left, right, leaf=False)
+    node = {
+        'feature': feature,
+        'value': value,
+        'left': left,
+        'right': right,
+    }
 
-    return binary_node
+    return node
 
 
 def calculate_entropy(data):
@@ -77,7 +82,7 @@ def calculate_entropy(data):
     @ola
     """
 
-    if data.ndim == 1:
+    if len(data) == 1 or len(data) == 1:
         return 0  # if there is only one instance then entropy is 0
     else:
         dict_classes = (
@@ -109,6 +114,7 @@ def calculate_information_gain(Y, subsets):
     """
 
     ig = calculate_entropy(Y)
+
     total_length = len(Y)
     for subset in subsets:
         ig -= (len(subset) / total_length) * calculate_entropy(subset)
@@ -149,12 +155,13 @@ def find_split(X, Y):
 
             # Calculate information gain for each split point (feature data < value)
             split_point_ig = calculate_information_gain(
-                Y_sorted, np.array(Y_left, Y_right)
+                Y_sorted, (Y_left, Y_right)
             )
 
             # If new split point is larger than the previous maximum, set it to be
             # the current best split option
             if split_point_ig > max_info_gain:
+                print(f"Better info gain! {split_point_ig} > {max_info_gain} on feature {feature} with value {midpoint}")
                 max_info_gain = split_point_ig
                 best_feature = feature
                 best_value = midpoint
@@ -211,6 +218,7 @@ def get_midpoints(X, feature):
         (X_feature[i] + X_feature[i + 1]) / 2 for i in range(len(X_feature) - 1)
     ]
 
+    midpoints = list(set(midpoints))  # remove duplicates
     return np.array(midpoints)
 
 
@@ -224,8 +232,13 @@ def split_data(X, Y, split_attribute, split_value):
     Returns: left_data, right_data
     """
 
-    pass
+    ind_mid = X[:,split_attribute] > split_value
+    X_right = X[ind_mid]
+    X_left = X[~ind_mid]
 
+    Y_right = Y[ind_mid]
+    Y_left = Y[~ind_mid]
+    return X_left, Y_left, X_right, Y_right
 
 
 def check_all_elements_same(arr):
@@ -256,18 +269,21 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     if depth == max_depth:
         return
 
+    print(f"At depth: {depth}")
+
     # Check if all Y has the same label and if so create a leaf node
     y_has_same_label, label_value = check_all_elements_same(Y)
     if y_has_same_label:
         return create_node(
-            None, None, None, None, leaf_val=label_value
-        )  # Set leaf value to the label of Y
+            None, label_value, None, None,
+        ), depth  # Set leaf value to the label of Y
 
     split_attribute, split_value = find_split(X, Y)
+    print(f"Optimal split found on feature {split_attribute} > {split_value}")
     X_left, Y_left, X_right, Y_right = split_data(X, Y, split_attribute, split_value)
 
-    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1)
-    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1)
+    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1, max_depth=max_depth)
+    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1, max_depth=max_depth)
 
     node = create_node(split_attribute, split_value, left_branch, right_branch)
 
@@ -297,8 +313,22 @@ if __name__ == "__main__":
     X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.2, 42)
     X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
 
-    print(X_train.shape)
-    print(X_test.shape)
-    print(X_cv.shape)
+    decision_tree, depth_reached = decision_tree_learning(X_train, Y_train)
+    print(depth_reached)
+    visualize_tree(decision_tree)
 
-    X_sorted, Y_sorted = sort_data(X_cv, Y_cv, 5)
+    tree_to_json(decision_tree, 'tree.json')
+
+    a = json_to_tree('tree.json')
+    visualize_tree(a)
+    # print(X_train.shape)
+    # print(X_test.shape)
+    # print(X_cv.shape)
+
+    # print(X_cv[:, 5])
+    # X_sorted, Y_sorted = sort_data(X_cv, Y_cv, 5)
+
+    # print(X_sorted[:, 5])
+    # print(get_midpoints(X_sorted, feature=5))
+
+    # print((X_sorted[:, 5][1:] + X_sorted[:, 5][:-1])/2)
