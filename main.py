@@ -1,5 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
+
 from binary_node import Binarytree
 
 
@@ -18,18 +18,47 @@ def load_data(filename):
                - y is a numpy array with shape (N, ), and each element should be
                    an integer representing room number from 0 to C-1 where C
                    is the number of classes
-               - classes : a numpy array with shape (C, ), which contains the
-                   unique class labels corresponding to the integers in y
     """
 
     X = np.loadtxt(filename, dtype=np.float64, usecols=(0, 1, 2, 3, 4, 5, 6))
     Y = np.loadtxt(filename, usecols=(7)).astype(np.int64)
-    # classes = np.unique(Y)
     return X, Y
 
 
-def split_data_train_test_cv(X, Y):
-    pass
+def train_test_split(X, Y, test_proportion, random_seed):
+    """ Split data X and Y into random train and test subsets according
+    to specified test_size proportion
+
+    Args:
+        X (np.array): Feature data
+        Y (np.array): Label data
+        test_proportion (float): Indicates proportion of dataset to be
+            test data. Must be between 0.0 and 1.0
+        random_seed (int): Seed used to initialize random generator
+
+    Returns:
+        - X_train (np.array): X data to use for train
+        - Y_train (np.array): Y data to use for train
+        - X_test (np.array): X data to use for test
+        - Y_test (np.array): Y data to use for test
+    """
+
+    # Create random generator
+    random_generator = np.random.default_rng(random_seed)
+
+    # Create array of shuffled indices
+    shuffled_indices = random_generator.permutation(len(X))
+
+    # Define size of test and train arrays based on input proportion
+    num_test = round(len(X) * test_proportion)
+
+    X_test = X[shuffled_indices[:num_test]]
+    Y_test = Y[shuffled_indices[:num_test]]
+
+    X_train = X[shuffled_indices[num_test:]]
+    Y_train = Y[shuffled_indices[num_test:]]
+
+    return X_train, Y_train, X_test, Y_test
 
 
 def create_node(attribute, value, left, right, leaf=False):
@@ -108,18 +137,23 @@ def find_split(X, Y):
     for feature in range(X.shape[1]):
 
         # Sort X by feature
-        Xsorted, Ysorted = sort(X, Y, feature)  # TODO: implement sort
+        X_sorted, Y_sorted = sort_data(X, Y, feature)
 
-        midpoints = get_midpoints(Xsorted, feature)  # TODO: implement get_midpoints
+        # Get midpoints of the feature column of sorted X
+        midpoints = get_midpoints(X_sorted, feature)
         for midpoint in midpoints:
-            # split data into two groups based on split point
-            Xleft, Yleft, Xright, Yright = split_data(
-                Xsorted, Ysorted, feature, midpoint
+            # Split data into two groups based on split point
+            _, Y_left, _, Y_right = split_data(
+                X_sorted, Y_sorted, feature, midpoint
             )
-            # calculate information gain for each split point (feature data < value)
+
+            # Calculate information gain for each split point (feature data < value)
             split_point_ig = calculate_information_gain(
-                Ysorted, np.array(Yleft, Yright)
+                Y_sorted, np.array(Y_left, Y_right)
             )
+
+            # If new split point is larger than the previous maximum, set it to be
+            # the current best split option
             if split_point_ig > max_info_gain:
                 max_info_gain = split_point_ig
                 best_feature = feature
@@ -128,8 +162,36 @@ def find_split(X, Y):
     return best_feature, best_value
 
 
-def sort_data():
-    pass
+def sort_data(X, Y, feature):
+    """ Sort data X, Y based on the feature column of X
+
+    Args:
+        X (np.array): Feature data
+        Y (np.array): Label data
+        feature (int): Index of feature column to sort on
+
+    Returns:
+        - X_sorted (np.array): X sorted on X[feature]
+        - Y_sorted (np.array): Y sorted on X[feature]
+    """
+
+    # Ensure feature is a valid column
+    if feature not in range(X.shape[1]):
+        raise ValueError(f"Feature {feature} does not exist in X")
+
+    # Reshape Y so that it can be joined with X
+    Y = Y.reshape(-1, 1)
+    # Combine Y with X so that it gets sorted alongside it
+    dataset = np.concatenate((X, Y), axis=1)
+
+    # Use argsort to sort data on feature
+    indices_sorted = np.argsort(dataset[:,feature])
+    dataset_sorted = dataset[indices_sorted]
+
+    # Separate dataset back into X and Y
+    X_sorted = dataset_sorted[:, :-1]
+    Y_sorted = dataset_sorted[:, -1]
+    return X_sorted, Y_sorted
 
 
 def get_midpoints(X, feature):
@@ -165,6 +227,17 @@ def split_data(X, Y, split_attribute, split_value):
     pass
 
 
+
+def check_all_elements_same(arr):
+    """ Check if all elements in a numpy array are the same
+    """
+
+    if np.all(arr == arr[0]):
+        return True, arr[0]
+    else:
+        return False, None
+
+
 def decision_tree_learning(X, Y, depth=0, max_depth=None):
     """This code is a placeholder
     Once we do the other parts, can tackle this bit
@@ -179,34 +252,26 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
         tree (nested dictionary representing entire tree and branches and leafs)
     """
 
+    # End decision tree learning if max depth has been met
     if depth == max_depth:
         return
 
-    # If all data in dataset has the same label, create leaf node
-    same = None
-    if all(Y) is same:  # TODO turn into real check
+    # Check if all Y has the same label and if so create a leaf node
+    y_has_same_label, label_value = check_all_elements_same(Y)
+    if y_has_same_label:
         return create_node(
-            None, None, None, None, leaf_val=same
-        )  # set leaf value to the label of Y
+            None, None, None, None, leaf_val=label_value
+        )  # Set leaf value to the label of Y
 
     split_attribute, split_value = find_split(X, Y)
-    Xleft, Yleft, Xright, Yright = split_data(X, Y, split_attribute, split_value)
+    X_left, Y_left, X_right, Y_right = split_data(X, Y, split_attribute, split_value)
 
-    left_branch, left_depth = decision_tree_learning(Xleft, Yleft, depth + 1)
-    right_branch, right_depth = decision_tree_learning(Xright, Yright, depth + 1)
+    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1)
+    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1)
 
     node = create_node(split_attribute, split_value, left_branch, right_branch)
 
     return node, max(left_depth, right_depth)
-
-
-def visualize_tree():
-    """BONUS FUNCTION: Plot tree visualization
-
-    Tackle this later
-    """
-
-    pass
 
 
 def evaluate_tree(test_data, trained_tree):
@@ -224,4 +289,16 @@ def prune_tree():
 
 
 if __name__ == "__main__":
-    pass
+    clean_filename = 'wifi_db/clean_dataset.txt'
+    noisy_filename = 'wifi_db/noisy_dataset.txt'
+
+    X, Y = load_data(clean_filename)
+
+    X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.2, 42)
+    X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+
+    print(X_train.shape)
+    print(X_test.shape)
+    print(X_cv.shape)
+
+    X_sorted, Y_sorted = sort_data(X_cv, Y_cv, 5)
