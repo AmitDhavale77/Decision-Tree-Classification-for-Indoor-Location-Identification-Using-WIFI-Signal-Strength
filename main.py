@@ -1,6 +1,6 @@
 import numpy as np
 
-from binary_node import Binarytree
+from visualize import visualize_tree
 
 
 def load_data(filename):
@@ -61,14 +61,19 @@ def train_test_split(X, Y, test_proportion, random_seed):
     return X_train, Y_train, X_test, Y_test
 
 
-def create_node(attribute, value, left, right, leaf=False):
+def create_node(feature, value, left, right):
     """
     @amit - convert to use class for node
     """
 
-    binary_node = Binarytree(attribute, value, left, right, leaf=False)
+    node = {
+        'feature': feature,
+        'value': value,
+        'left': left,
+        'right': right,
+    }
 
-    return binary_node
+    return node
 
 
 def calculate_entropy(data):
@@ -107,6 +112,7 @@ def calculate_information_gain(Y, subsets):
     """
 
     ig = calculate_entropy(Y)
+
     total_length = len(Y)
     for subset in subsets:
         ig -= (len(subset) / total_length) * calculate_entropy(subset)
@@ -147,7 +153,7 @@ def find_split(X, Y):
 
             # Calculate information gain for each split point (feature data < value)
             split_point_ig = calculate_information_gain(
-                Y_sorted, np.array(Y_left, Y_right)
+                Y_sorted, (Y_left, Y_right)
             )
 
             # If new split point is larger than the previous maximum, set it to be
@@ -209,40 +215,31 @@ def get_midpoints(X, feature):
         (X_feature[i] + X_feature[i + 1]) / 2 for i in range(len(X_feature) - 1)
     ]
 
+    midpoints = list(set(midpoints))  # remove duplicates
     return np.array(midpoints)
 
 
 def split_data(X, Y, split_attribute, split_value):
-    """This should take in results from above and acutally split the data
-    @amit
+    """ This should take in results from above and acutally split the data
 
     Args: 
         X : data
         Y : labels
-        aplit_attribute (int) : column depeneding on which the split is done
+        split_attribute (int) : column depeneding on which the split is done
         split_value (float) : value to split on (left split is values <= split_point and right split is values > split_point)
 
-        data - TODO decide on data structure
-       
     Returns: 
         X_left, Y_left, X_right, Y_right
     """
-    flag = True
-    index = 0
-    while flag:
-        if X[index][split_attribute] <= split_value:
-            index += 1
-        else:
-            flag = False
-    X_left = X[:index]
-    Y_left = Y[:index]
-    X_right = X[index:]
-    Y_right = Y[index:]
+
+    ind_mid = X[:,split_attribute] > split_value
+    X_right = X[ind_mid]
+    X_left = X[~ind_mid]
+
+    Y_right = Y[ind_mid]
+    Y_left = Y[~ind_mid]
 
     return X_left, Y_left, X_right, Y_right 
-
-
-
 
 
 def check_all_elements_same(arr):
@@ -256,8 +253,7 @@ def check_all_elements_same(arr):
 
 
 def decision_tree_learning(X, Y, depth=0, max_depth=None):
-    """This code is a placeholder
-    Once we do the other parts, can tackle this bit
+    """ Train the decision tree on dataset X and Y
 
     Args:
         X train
@@ -267,6 +263,7 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
 
     Returns:
         tree (nested dictionary representing entire tree and branches and leafs)
+        depth (int representing how many levels the tree has)
     """
 
     # End decision tree learning if max depth has been met
@@ -276,27 +273,73 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     # Check if all Y has the same label and if so create a leaf node
     y_has_same_label, label_value = check_all_elements_same(Y)
     if y_has_same_label:
-        return create_node(
-            None, None, None, None, leaf_val=label_value
-        )  # Set leaf value to the label of Y
+        leaf_node = create_node(None, label_value, None, None)
+        return leaf_node, depth  # Set leaf value to the label of Y
 
-    split_attribute, split_value = find_split(X, Y)
-    X_left, Y_left, X_right, Y_right = split_data(X, Y, split_attribute, split_value)
+    # Find optimal split feature by searching for optimal information gain
+    split_feature, split_value = find_split(X, Y)
+    print(f"Depth: {depth}: Splitting on X[{split_feature}] > {split_value}")
+    # Split data on optimal feature into left and right datasets
+    X_left, Y_left, X_right, Y_right = split_data(X, Y, split_feature, split_value)
 
-    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1)
-    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1)
+    # Make recursive calls to train sub-trees on left and right datasets
+    left_branch, left_depth = decision_tree_learning(X_left, Y_left, depth + 1, max_depth=max_depth)
+    right_branch, right_depth = decision_tree_learning(X_right, Y_right, depth + 1, max_depth=max_depth)
 
-    node = create_node(split_attribute, split_value, left_branch, right_branch)
+    # Create node with current split feature and value
+    node = create_node(split_feature, split_value, left_branch, right_branch)
 
     return node, max(left_depth, right_depth)
 
 
-def evaluate_tree(test_data, trained_tree):
-    """Evaluate accuracy of trained tree using test data
+def compute_accuracy(y_gold, y_prediction):
+    """ Compute the accuracy given the ground truth and predictions
+
+    Args:
+        y_gold (np.ndarray): the correct ground truth/gold standard labels
+        y_prediction (np.ndarray): the predicted labels
+
+    Returns:
+        accuracy (float): accuracy value between 0 and 1
+    """
+
+    assert len(y_gold) == len(y_prediction)
+
+    if len(y_gold) == 0:
+        return 0
+
+    return np.sum(y_gold == y_prediction) / len(y_gold)
+
+
+def evaluate_tree(tree, test_x):
+    """ Evaluate accuracy of trained tree using test data
     @aanish
     """
 
-    pass
+    num_rows, _ = test_x.shape
+    predictions = np.zeros((num_rows,))
+
+    for row in range(num_rows):
+        test_row = test_x[row, :]
+        predictions[row] = predict(tree, test_row)
+
+    return predictions
+
+
+def predict(tree, test_row):
+    """ Make a prediction on an input dataset using a trained tree
+    """
+
+    if tree['feature'] is None:
+        return tree['value']
+
+    cur_feature = tree['feature']
+    cur_value = tree['value']
+    go_right = test_row[cur_feature] > cur_value
+    if go_right:
+        return predict(tree['right'], test_row)
+    else:
+        return predict(tree['left'], test_row)
 
 
 def prune_tree():
@@ -311,13 +354,13 @@ if __name__ == "__main__":
 
     X, Y = load_data(clean_filename)
 
-    X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.2, 42)
+    X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.5, 42)
     X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
 
-    print(X_train.shape)
-    print(X_test.shape)
-    print(X_cv.shape)
+    decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+    visualize_tree(decision_tree, tree_depth)
 
-    X_sorted, Y_sorted = sort_data(X_cv, Y_cv, 5)
+    y_predictions = evaluate_tree(decision_tree, X_test)
+    accuracy = compute_accuracy(Y_test, y_predictions)
 
-
+    print(f"Accuracy on test set: {accuracy*100}%")
