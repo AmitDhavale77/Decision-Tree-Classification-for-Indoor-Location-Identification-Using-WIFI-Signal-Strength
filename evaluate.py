@@ -1,20 +1,20 @@
 # Do evaluation stuff
 
 
-evaluation_example = {
-    '1': {
-        'accuracy': None,
-        'precision': None,
-        'recall': None,
-        'f1': None,
-    },
-    # etc... for 2, 3, 4
-    'confusion_matrix': None # 4x4 matrix
-    'overall': {
-        # same as above
+# evaluation_example = {
+#     '1': {
+#         'accuracy': None,
+#         'precision': None,
+#         'recall': None,
+#         'f1': None,
+#     },
+#     # etc... for 2, 3, 4
+#     'confusion_matrix': None # 4x4 matrix
+#     'overall': {
+#         # same as above
 
-    }
-}
+#     }
+# }
 
 
 def compute_accuracy(y_gold, y_prediction):
@@ -36,9 +36,17 @@ def compute_accuracy(y_gold, y_prediction):
     return np.sum(y_gold == y_prediction) / len(y_gold)
 
 
-def evaluate_tree(tree, test_x):
-    """ Evaluate accuracy of trained tree using test data
-    @aanish
+def predictions(tree, test_x):
+    """ 
+    Predict output values from a tree using a test set
+
+    Args:
+        tree(dict): trained decision tree dictionary 
+        test_x(np.array): array of x features to get classification predictions from the tree
+
+    Returns:
+        np.array: array of size len(test_x) of output predictions from tree
+
     """
 
     num_rows, _ = test_x.shape
@@ -46,13 +54,18 @@ def evaluate_tree(tree, test_x):
 
     for row in range(num_rows):
         test_row = test_x[row, :]
-        predictions[row] = predict(tree, test_row)
+        row_predict[row] = predict(tree, test_row)
 
     return predictions
 
 
-def predict(tree, test_row):
-    """ Make a prediction on an input dataset using a trained tree
+def row_predict(tree, test_row):
+    """ 
+    Make a prediction for a single row on an input dataset using a trained tree
+
+    Args: 
+        tree(dict): trained decision tree dictionary
+        test_row(np.array): single row of an np.array to make a decision from
     """
 
     if tree['feature'] is None:
@@ -65,6 +78,39 @@ def predict(tree, test_row):
         return predict(tree['right'], test_row)
     else:
         return predict(tree['left'], test_row)
+
+
+def get_classification_evaluation():
+    """ return dictionary in format: 
+            {
+                'accuracy': None,
+                'precision': None,
+                'recall': None,
+                'f1': None,
+            }
+    """
+    pass
+
+
+def get_confusion_matrix(y_gold, y_prediction):
+    """
+    create the confusion matrix from the true and predicted values
+
+    Args: 
+        y_gold: TODO
+        y_prediction 
+
+    Returns:
+        np.array of size n_classifications x n_classifications
+    """
+
+    # get number of unique classifications (assuming they all appear in the data)
+    n_classifications = 4 #TODO
+
+    # create empty matrix
+    confusion_matrix = np.zeros(n_classifications, n_classifications)
+
+    return confusion_matrix
 
 
 def evaluation(test_db, trained_tree):
@@ -80,10 +126,25 @@ def evaluation(test_db, trained_tree):
 
     Return a dictionary with all of these metrics
     """
+    # predict output 
+    x_test = test_db[:,:-1]
+    y_gold = test_db[:, -1]
+    y_prediction = predictions(trained_tree, x_test)
 
-    # Ideally this should return a single metric we can make decision on
-    # Do the math
-    return evaluation_example
+    # evaluate results
+    confusion_matrix = get_confusion_matrix(y_gold, y_prediction)
+
+    evaluation = {"confusion_matrix":confusion_matrix}
+
+    classes = [str(classification) for classification in test_db[:,-1].unique()]
+    for classification in classes: 
+        evaluation[classification] = get_classification_evaluation()
+
+    # macroaverage overall metrics 
+    evaluation['overall'] = {}
+
+    return evaluation
+
 
 
 def advanced_k_fold(dataset, k=10):
