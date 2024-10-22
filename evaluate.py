@@ -238,22 +238,12 @@ def make_data_folds(dataset, random_seed, k=10):
         final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
 
         # add the accuracy
-        final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
-
-        # calculate overall metrics
-
-        """
-        final_entry = final_eval.get('overall', {})
-        final_eval['overall'] =  final_entry 
-        final_eval['overall']['precision'] = final_entry.get('precision', 0) + evaluation_metrics['overall']['precision']
-        final_eval['overall']['recall'] = final_entry.get('recall', 0) + evaluation_metrics['overall']['recall']
-        final_eval['overall']['f1'] = final_entry.get('f1', 0) + evaluation_metrics['overall']['f1']
-        """
+        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
 
         # calculate sum of metrics for exach class
         for index in range(1,4):
             index_str = str(index)
-            for word in ['precision', 'recall', 'f1']:
+            for word in ['precision', 'recall']:
                 final_entry = final_eval.get(index_str, {})
                 
                 # Safely get the value or default to 0 if not present
@@ -263,10 +253,18 @@ def make_data_folds(dataset, random_seed, k=10):
     # calculate averages across all folds
     for index in range(1,4):
         index_str = str(index)
-        for word in ['precision', 'recall', 'f1']:
+        for word in ['precision', 'recall']:
             final_eval[index_str][word] /= 10
+        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
 
-    final_eval['accuracy'] /= 10
+    # calculate accuracy
+    confusion_matrix = final_eval['confusion_matrix']
+    tp = confusion_matrix[0][0]
+    fn = confusion_matrix[0][1]
+    fp = confusion_matrix[1][0]
+    tn = confusion_matrix[1][1]
+    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
+
 
     # calculate macro-averaged overall metrics
     final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
