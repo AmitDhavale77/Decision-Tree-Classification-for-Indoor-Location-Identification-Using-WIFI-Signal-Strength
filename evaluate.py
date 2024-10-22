@@ -190,36 +190,6 @@ def make_data_folds(dataset, random_seed, k=10):
 
     final_eval = {}
 
-    evaluation_example = {
-     '1': {
-        'precision': None,
-        'recall': None,
-        'f1': None,
-     },
-     '2': {
-        'precision': None,
-        'recall': None,
-        'f1': None,
-     },
-     '3': {
-        'precision': None,
-        'recall': None,
-        'f1': None,
-     },
-     '4': {
-        'precision': None,
-        'recall': None,
-        'f1': None,
-     },
-     'confusion_matrix': None, # 4x4 matrix
-     'accuracy': None,
-     'overall': {
-        'precision': None,
-        'recall': None,
-        'f1': None,
-     }
- }
-
     for index, part in enumerate(parts):
         other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
 
@@ -264,7 +234,6 @@ def make_data_folds(dataset, random_seed, k=10):
     fp = confusion_matrix[1][0]
     tn = confusion_matrix[1][1]
     final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
-
 
     # calculate macro-averaged overall metrics
     final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
