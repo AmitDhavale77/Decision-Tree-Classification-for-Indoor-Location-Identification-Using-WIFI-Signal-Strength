@@ -1,20 +1,19 @@
-# Do evaluation stuff
+import numpy as np
 
+# evaluation_example = {
+#     '1': {
+#         'accuracy': None,
+#         'precision': None,
+#         'recall': None,
+#         'f1': None,
+#     },
+#     # etc... for 2, 3, 4
+#     'confusion_matrix': None # 4x4 matrix
+#     'overall': {
+#         # same as above
 
-evaluation_example = {
-    '1': {
-        'accuracy': None,
-        'precision': None,
-        'recall': None,
-        'f1': None,
-    },
-    # etc... for 2, 3, 4
-    'confusion_matrix': None # 4x4 matrix
-    'overall': {
-        # same as above
-
-    }
-}
+#     }
+# }
 
 
 def compute_accuracy(y_gold, y_prediction):

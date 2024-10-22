@@ -1,6 +1,8 @@
+import copy
 import numpy as np
 
-from visualize import visualize_tree
+from visualize import visualize_tree, tree_to_json, json_to_tree
+from evaluate import evaluate_tree, compute_accuracy
 
 
 def load_data(filename):
@@ -292,7 +294,12 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     return node, max(left_depth, right_depth)
 
 
-def prune_tree(trained_tree, ):
+def compute_accuracy_helper(tree, X_test, Y_test):
+    y_predictions = evaluate_tree(tree, X_test)
+    return compute_accuracy(Y_test, y_predictions)
+
+
+def prune_tree(tree, X_test, Y_test):
     """wait till next week's lecture to see how to implement this"""
     # @Aanish
     # for each node connected to two leaves, replace with single leaf and
@@ -303,22 +310,134 @@ def prune_tree(trained_tree, ):
     # do we depth first, or breadth first, or ???
 
     # use evaluation(test_db, trained_tree) to get the accuracy
-    return new_pruned_tree, new_depth
+
+    baseline_accuracy = compute_accuracy_helper(tree, X_test, Y_test)
+    pruned_tree = prune_tree_recursively(tree, X_test, Y_test, baseline_accuracy)
+    return pruned_tree
+    # nodes_with_two_leaves = find_nodes_with_two_leaves(tree, [])
+    # nodes_visited = set()
+
+    # while len(nodes_with_two_leaves) > 0:
+    #     current_node = nodes_with_two_leaves.pop()
+    #     nodes_visited.add((current_node['feature'], current_node['value']))
+
+    #     print(f"Evaluating node X[{current_node['feature']} > {current_node['value']}]")
+    #     tree_copy = copy.deepcopy(tree)
+    #     tree_copy_right = copy.deepcopy(tree)
+    #     tree_copy_left = copy.deepcopy(tree)
+
+    #     replace_node(tree_copy_right, current_node, True)
+    #     replace_node(tree_copy_left, current_node, True)
+
+    #     cur_trees = [tree_copy, tree_copy_right, tree_copy_left]
+    #     cur_trees_acc = []
+    #     for pruned_tree in cur_trees:
+    #         y_predictions = evaluate_tree(pruned_tree, X_test)
+    #         accuracy = compute_accuracy(Y_test, y_predictions)
+    #         print(f"new accuracy.. {accuracy}")
+    #         cur_trees_acc.append(accuracy)
+        
+    #     tree = cur_trees[np.argmax(cur_trees_acc)]
+
+    #     new_nodes = find_nodes_with_two_leaves(tree, nodes_with_two_leaves)
+    #     for node in new_nodes:
+    #         if (node['feature'], node['value']) in nodes_visited:
+    #             continue
+    #         else:
+    #             nodes_with_two_leaves.append(node)
+
+    # return tree
+
+
+def prune_tree_recursively(tree, X_test, Y_test, baseline_accuracy):
+
+    # Leaf node
+    if tree['feature'] is None:
+        return None
+
+    if tree['left']['feature']:
+        tree['left'] = prune_tree_recursively(tree['left'], X_test, Y_test, baseline_accuracy)
+    if tree['right']['feature']:
+        tree['right'] = prune_tree_recursively(tree['right'], X_test, Y_test, baseline_accuracy)
+
+    if tree['left']['feature'] is None and tree['right']['feature'] is None:
+        tree_left_copy = copy.deepcopy(tree)
+        tree_right_copy = copy.deepcopy(tree)
+
+        tree_left_copy = tree['left']
+        tree_right_copy = tree['right']
+
+        left_accuracy = compute_accuracy_helper(tree_left_copy, X_test, Y_test)
+        right_accuracy = compute_accuracy_helper(tree_right_copy, X_test, Y_test)
+
+        if left_accuracy > baseline_accuracy or right_accuracy > baseline_accuracy:
+            if left_accuracy > right_accuracy:
+                # left tree is best
+                print("Pruning left!")
+                return tree_left_copy
+            else:
+                print("Pruning right!")
+                return tree_right_copy
+        else:
+            return tree
+
+    return tree
+
+
+def find_nodes_with_two_leaves(tree, matching_nodes):
+
+    # Leaf node
+    if tree['feature'] is None:
+        return
+
+    if tree['left']['feature'] is None and tree['right']['feature'] is None:
+        print(f'Found! {tree['feature']} > {tree['value']}')
+        matching_nodes.append(tree)
+        return matching_nodes
+
+    find_nodes_with_two_leaves(tree['left'], matching_nodes)
+    find_nodes_with_two_leaves(tree['right'], matching_nodes)
+
+    return matching_nodes
+
+
+def replace_node(tree, node, use_right=True):
+
+    # Leaf node
+    if tree['feature'] is None:
+        return
+
+    if tree['feature'] == node['feature'] and tree['value'] == node['value']:
+        if use_right:
+            tree['value'] = tree['right']['value']
+        else:
+            tree['value'] = tree['left']['value']
+        tree['feature'] = None
+        tree['left'] = None
+        tree['right'] = None
+        return
+
+    replace_node(tree['left'], node, use_right)
+    replace_node(tree['right'], node, use_right)
 
 
 if __name__ == "__main__":
     clean_filename = 'wifi_db/clean_dataset.txt'
     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
-    X, Y = load_data(clean_filename)
+    X, Y = load_data(noisy_filename)
 
-    X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.5, 42)
-    X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+    X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.5, 42)
+    # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
 
     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
-    visualize_tree(decision_tree, tree_depth)
+    # visualize_tree(decision_tree, tree_depth)
 
-    y_predictions = evaluate_tree(decision_tree, X_test)
-    accuracy = compute_accuracy(Y_test, y_predictions)
+    # tree_to_json(decision_tree, 'tree.json')
+    # decision_tree = json_to_tree('noisy_tree.json')
 
-    print(f"Accuracy on test set: {accuracy*100}%")
+    # accuracy = compute_accuracy_helper(decision_tree, X_test, Y_test)
+    # print(f"Accuracy on test set: {accuracy*100}%")
+
+    pruned_tree = prune_tree(decision_tree, X_test, Y_test)
+    visualize_tree(pruned_tree, tree_depth)
