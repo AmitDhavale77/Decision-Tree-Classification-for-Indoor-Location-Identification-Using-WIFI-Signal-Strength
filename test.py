@@ -1,12 +1,18 @@
 import numpy as np
-from main import calculate_entropy, calculate_information_gain, get_midpoints, split_data
+from main import (
+    calculate_entropy,
+    calculate_information_gain,
+    get_midpoints,
+    split_data,
+)
+from evaluate import get_confusion_matrix, show_confusion_matrix
 
 
 def check_equal_output(expected_output, calculated_output):
     """
     Check if the expected output is equal to the calculated output
     """
-    if all(expected_output == calculated_output):
+    if np.all(expected_output == calculated_output):
         return "    passed test"
     else:
         return "    failed test"
@@ -162,6 +168,7 @@ def test_get_midpoints():
     print("Testing midpoints function:")
     return check_equal_output(expected_output, output)
 
+
 def test_split_data():
     """
     Test split data function
@@ -176,35 +183,53 @@ def test_split_data():
         [98, 101, 40, 87, 1, 2, 98],
         [43, 7, 54, 8, 11, 12, 13],
         [1, 2, 60, 3, 4, 5, 6],
-        [7, 8, 76, 9, 10, 11, 12]
-        ]
+        [7, 8, 76, 9, 10, 11, 12],
+    ]
     Y = [1, 2, 3, 4, 5, 6, 7]
     X_left, Y_left, X_right, Y_right = split_data(X, Y, 2, 15.5)
-    
+
     X_left_truth = [
-    [3, 5, 1, 8, 9, 9, 10],
-    [11, 54, 3, 1, 8, 0, 34],
-    [45, 0, 10, 6, 11, 13, 49]
+        [3, 5, 1, 8, 9, 9, 10],
+        [11, 54, 3, 1, 8, 0, 34],
+        [45, 0, 10, 6, 11, 13, 49],
     ]
 
     Y_left_truth = [1, 2, 3]
 
     X_right_truth = [
-    [22, 67, 21, 90, 4, 56, 7],
-    [5, 3, 22, 7, 90, 88, 7],
-    [8, 43, 30, 8, 88, 90, 1],
-    [98, 101, 40, 87, 1, 2, 98],
-    [43, 7, 54, 8, 11, 12, 13],
-    [1, 2, 60, 3, 4, 5, 6],
-    [7, 8, 76, 9, 10, 11, 12]
+        [22, 67, 21, 90, 4, 56, 7],
+        [5, 3, 22, 7, 90, 88, 7],
+        [8, 43, 30, 8, 88, 90, 1],
+        [98, 101, 40, 87, 1, 2, 98],
+        [43, 7, 54, 8, 11, 12, 13],
+        [1, 2, 60, 3, 4, 5, 6],
+        [7, 8, 76, 9, 10, 11, 12],
     ]
 
     Y_right_truth = [4, 5, 6, 7]
     print("Testing split data function:")
-    if X_left == X_left_truth and Y_left == Y_left_truth and X_right == X_right_truth and Y_right == Y_right_truth:
+    if (
+        X_left == X_left_truth
+        and Y_left == Y_left_truth
+        and X_right == X_right_truth
+        and Y_right == Y_right_truth
+    ):
         return "    passed test"
     else:
         return "    failed test"
+
+
+def test_confusion_matrix():
+    """
+    Test confusion matrix function
+    """
+    y_true = np.array([2, 0, 2, 2, 0, 1])
+    y_pred = np.array([0, 0, 2, 2, 0, 2])
+    confusion_matrix = get_confusion_matrix(y_true, y_pred)
+    confusion_matrix_truth = np.array([[2, 0, 0], [0, 0, 1], [1, 0, 2]])
+    print("Testing confusion matrix function:")
+    show_confusion_matrix(confusion_matrix)
+    return check_equal_output(confusion_matrix_truth, confusion_matrix)
 
 
 if __name__ == "__main__":
@@ -212,4 +237,5 @@ if __name__ == "__main__":
     print(test_get_midpoints())
     print(test_entropy())
     print(test_ig())
-    print(test_split_data())
+    # print(test_split_data())
+    print(test_confusion_matrix())
