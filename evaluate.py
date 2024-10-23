@@ -16,7 +16,7 @@ import numpy as np
 # }
 
 
-def compute_accuracy(y_gold, y_prediction):
+def simple_compute_accuracy(y_gold, y_prediction):
     """ Compute the accuracy given the ground truth and predictions
 
     Args:
