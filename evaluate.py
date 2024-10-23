@@ -20,6 +20,25 @@ from main import decision_tree_learning
 # }
 
 
+def simple_compute_accuracy(y_gold, y_prediction):
+    """ Compute the accuracy given the ground truth and predictions
+
+    Args:
+        y_gold (np.ndarray): the correct ground truth/gold standard labels
+        y_prediction (np.ndarray): the predicted labels
+
+    Returns:
+        accuracy (float): accuracy value between 0 and 1
+    """
+
+    assert len(y_gold) == len(y_prediction)
+
+    if len(y_gold) == 0:
+        return 0
+
+    return np.sum(y_gold == y_prediction) / len(y_gold)
+
+
 def predictions(tree, test_x):
     """
     Predict output values from a tree using a test set

@@ -1,6 +1,8 @@
+import copy
 import numpy as np
 
-from visualize import visualize_tree
+from visualize import visualize_tree, tree_to_json, json_to_tree
+from evaluate import predictions, simple_compute_accuracy
 
 
 def load_data(filename):
@@ -278,7 +280,7 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
 
     # Find optimal split feature by searching for optimal information gain
     split_feature, split_value = find_split(X, Y)
-    print(f"Depth: {depth}: Splitting on X[{split_feature}] > {split_value}")
+    # print(f"Depth: {depth}: Splitting on X[{split_feature}] > {split_value}")
     # Split data on optimal feature into left and right datasets
     X_left, Y_left, X_right, Y_right = split_data(X, Y, split_feature, split_value)
 
@@ -292,8 +294,14 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     return node, max(left_depth, right_depth)
 
 
-def prune_tree(trained_tree, ):
-    """wait till next week's lecture to see how to implement this"""
+def compute_accuracy_helper(tree, X_test, Y_test):
+    y_predictions = predictions(tree, X_test)
+    return round(simple_compute_accuracy(Y_test, y_predictions), 2)
+
+
+def prune_tree(tree, X_test, Y_test):
+    """ Given a trained tree and test data, prune the tree to maximize accuracy
+    """
     # @Aanish
     # for each node connected to two leaves, replace with single leaf and
     # run evaluation_option2. If it's better, replace the node with the leaf
@@ -303,22 +311,133 @@ def prune_tree(trained_tree, ):
     # do we depth first, or breadth first, or ???
 
     # use evaluation(test_db, trained_tree) to get the accuracy
-    return new_pruned_tree, new_depth
+
+    nodes_with_two_leaves = find_nodes_with_two_leaves(tree, [])
+    nodes_visited = set()
+
+    while len(nodes_with_two_leaves) > 0:
+
+        node = nodes_with_two_leaves.pop()
+        if node in nodes_visited:
+            continue
+        else:
+            nodes_visited.add(node)
+
+        tmp_tree_left = copy.deepcopy(tree)
+        tmp_tree_right = copy.deepcopy(tree)
+
+        replace_node(tmp_tree_left, node, False)
+        replace_node(tmp_tree_right, node, True)
+
+        baseline_accuracy = compute_accuracy_helper(tree, X_test, Y_test)
+        left_accuracy = compute_accuracy_helper(tmp_tree_left, X_test, Y_test)
+        right_accuracy = compute_accuracy_helper(tmp_tree_right, X_test, Y_test)
+
+        if left_accuracy >= baseline_accuracy or right_accuracy >= baseline_accuracy:
+
+            if left_accuracy >= right_accuracy:
+                # print(f"Left accuracy better for X[{node[0]}] > {node[1]}. {left_accuracy * 100}% vs {baseline_accuracy * 100}%")
+                tree = tmp_tree_left
+            else:
+                # print(f"Right accuracy better for X[{node[0]}] > {node[1]}. {right_accuracy * 100}% vs {baseline_accuracy * 100}%")
+                tree = tmp_tree_right
+
+        new_nodes_with_two_leaves = find_nodes_with_two_leaves(tree, [])
+        for new_node in new_nodes_with_two_leaves:
+            if new_node in nodes_visited:
+                continue
+            else:
+                nodes_with_two_leaves.append(new_node)
+
+    return tree
+
+
+def count_leaves(tree):
+    """ Calculate number of leaves i.e max span of the tree
+    """
+    if tree is None:
+        return 0
+    elif tree['feature'] is None:
+        return 1
+
+    return count_leaves(tree['left']) + count_leaves(tree['right'])
+
+
+def get_tree_depth(tree):
+    """ Calculate tree depth
+    """
+    if tree is None or tree['feature'] is None:
+        return 0
+    return 1 + max(get_tree_depth(tree['left']), get_tree_depth(tree['right']))
+
+
+def find_nodes_with_two_leaves(tree, matching_nodes):
+
+    # Leaf node
+    if tree['feature'] is None:
+        return
+
+    if tree['left']['feature'] is None and tree['right']['feature'] is None:
+        # print(f'Found! {tree['feature']} > {tree['value']}')
+        matching_nodes.append((tree['feature'], tree['value']))
+        return matching_nodes
+
+    find_nodes_with_two_leaves(tree['left'], matching_nodes)
+    find_nodes_with_two_leaves(tree['right'], matching_nodes)
+
+    return matching_nodes
+
+
+def replace_node(tree, node, use_right=True):
+
+    node_feature, node_value = node
+    # Leaf node
+    if tree['feature'] is None:
+        return
+
+    if tree['feature'] == node_feature and tree['value'] == node_value:
+        if use_right:
+            tree['value'] = tree['right']['value']
+        else:
+            tree['value'] = tree['left']['value']
+        tree['feature'] = None
+        tree['left'] = None
+        tree['right'] = None
+        return
+
+    replace_node(tree['left'], node, use_right)
+    replace_node(tree['right'], node, use_right)
 
 
 if __name__ == "__main__":
     clean_filename = 'wifi_db/clean_dataset.txt'
     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
-    X, Y = load_data(clean_filename)
+    X, Y = load_data(noisy_filename)
 
-    X_train, Y_train, X_, Y_ = train_test_split(X, Y, 0.5, 42)
-    X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+    X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
+    # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
 
     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
-    visualize_tree(decision_tree, tree_depth)
+    og_depth = get_tree_depth(decision_tree)
+    og_span = count_leaves(decision_tree)
+    og_accuracy = compute_accuracy_helper(decision_tree, X_test, Y_test)
+    print(f"Original Depth: {og_depth} & Span: {og_span}")
+    print(f"Original Accuracy: {og_accuracy}")
 
-    y_predictions = evaluate_tree(decision_tree, X_test)
-    accuracy = compute_accuracy(Y_test, y_predictions)
+    # visualize_tree(decision_tree, og_depth)
 
-    print(f"Accuracy on test set: {accuracy*100}%")
+    # tree_to_json(decision_tree, 'tree.json')
+    # decision_tree = json_to_tree('noisy_tree.json')
+    # visualize_tree(decision_tree, 11)
+    # print(f"Accuracy on test set: {accuracy*100}%")
+
+    pruned_tree = prune_tree(decision_tree, X_test, Y_test)
+    new_depth = get_tree_depth(pruned_tree)
+    new_span = count_leaves(pruned_tree)
+    new_accuracy = compute_accuracy_helper(pruned_tree, X_test, Y_test)
+
+    print(f"Pruned Depth: {new_depth} & Span: {new_span}")
+    print(f"New Accuracy: {new_accuracy}")
+
+    visualize_tree(pruned_tree, new_depth)

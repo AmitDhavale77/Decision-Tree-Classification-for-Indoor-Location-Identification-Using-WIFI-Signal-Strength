@@ -30,7 +30,7 @@ def json_to_tree(input_file):
 def plot_tree(node, x, y, x_offset, y_offset, ax, depth, max_depth):
     """ Recursively plot the decision tree. """
     # Adjust text size and box size based on depth
-    font_size = max(12 - depth, 6)  # Minimum font size 6
+    font_size = max(10 - depth, 6)  # Minimum font size 6
     box_style = dict(facecolor='peru', edgecolor='black', boxstyle='round,pad=0.5', alpha=0.9)
 
     # If it's a leaf node, plot the value
@@ -52,12 +52,12 @@ def plot_tree(node, x, y, x_offset, y_offset, ax, depth, max_depth):
     # Plot left child (recursively)
     if 'left' in node:
         ax.plot([x, left_x], [y, next_y], 'saddlebrown', lw=1.5)  # Draw the line
-        plot_tree(node['left'], left_x, next_y, x_offset, y_offset, ax, depth + 1, max_depth)
+        plot_tree(node['left'], left_x, next_y, x_offset * 1.15, y_offset, ax, depth + 1, max_depth)
 
     # Plot right child (recursively)
     if 'right' in node:
         ax.plot([x, right_x], [y, next_y], 'saddlebrown', lw=1.5)  # Draw the line
-        plot_tree(node['right'], right_x, next_y, x_offset, y_offset, ax, depth + 1, max_depth)
+        plot_tree(node['right'], right_x, next_y, x_offset * 1.15, y_offset, ax, depth + 1, max_depth)
 
 
 # Main function to visualize a decision tree
