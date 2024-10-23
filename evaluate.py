@@ -1,4 +1,7 @@
 import numpy as np
+from main import decision_tree_learning
+
+# Do evaluation stuff
 
 
 # evaluation_example = {
@@ -75,9 +78,9 @@ def row_predict(tree, test_row):
     cur_value = tree["value"]
     go_right = test_row[cur_feature] > cur_value
     if go_right:
-        return row_predict(tree["right"], test_row)
+        return row_predict(tree['right'], test_row)
     else:
-        return row_predict(tree["left"], test_row)
+        return row_predict(tree['left'], test_row)
 
 
 def compute_accuracy(confusion_matrix):
@@ -254,7 +257,7 @@ def advanced_k_fold(dataset, k=10):
     return
 
 
-def make_data_folds(dataset, k=10):
+def make_data_folds(dataset, random_seed, k=10):
     # @Ola
     # Look at existing version of train_test_split but will need to make folds deterministically
 
@@ -266,4 +269,70 @@ def make_data_folds(dataset, k=10):
 
     # Return evaluation dictionary in the same format as above one but
     # averaged across the k folds
-    return
+    # Create random generator
+
+    #what is the split is not equal??
+    random_generator = np.random.default_rng(random_seed)
+
+    # Create array of shuffled indices
+    shuffled_indices = random_generator.permutation(len(dataset))
+
+    data_shuffled = dataset[shuffled_indices]
+
+    parts = np.array_split(data_shuffled, 10, axis=0)
+
+    final_eval = {}
+
+    for index, part in enumerate(parts):
+        other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
+
+        # Concatenate all other parts
+        combined_data = np.vstack(other_parts)  # Stack all other parts vertically
+
+        # Separate features (X) and labels (Y)
+        X_train = combined_data[:, :-1]  # All columns except the last
+        Y_train = combined_data[:, -1]   # Last column
+
+        decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+
+        evaluation_metrics = evaluation(part, decision_tree)
+
+        # add the confusion matrix
+        final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
+
+        # add the accuracy
+        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
+
+        # calculate sum of metrics for exach class
+        for index in range(1,4):
+            index_str = str(index)
+            for word in ['precision', 'recall']:
+                final_entry = final_eval.get(index_str, {})
+                
+                # Safely get the value or default to 0 if not present
+                final_eval[index_str] = final_entry  # Ensure it exists in final_eval
+                final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
+    
+    # calculate averages across all folds
+    for index in range(1,4):
+        index_str = str(index)
+        for word in ['precision', 'recall']:
+            final_eval[index_str][word] /= 10
+        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
+
+    # calculate accuracy
+    confusion_matrix = final_eval['confusion_matrix']
+    tp = confusion_matrix[0][0]
+    fn = confusion_matrix[0][1]
+    fp = confusion_matrix[1][0]
+    tn = confusion_matrix[1][1]
+    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
+
+    # calculate macro-averaged overall metrics
+    final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
+    final_eval['overall']['recall'] = (final_eval['1']['recall']+final_eval['2']['recall']+final_eval['3']['recall']+final_eval['4']['recall'])/4
+    final_eval['overall']['f1'] = (final_eval['1']['f1']+final_eval['2']['f1']+final_eval['3']['f1']+final_eval['4']['f1'])/4
+
+    return final_eval 
+
+
