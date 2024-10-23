@@ -122,6 +122,56 @@ def calculate_information_gain(Y, subsets):
     return ig
 
 
+def compute_accuracy(y_gold, y_prediction):
+    """ Compute the accuracy given the ground truth and predictions
+
+    Args:
+        y_gold (np.ndarray): the correct ground truth/gold standard labels
+        y_prediction (np.ndarray): the predicted labels
+
+    Returns:
+        accuracy (float): accuracy value between 0 and 1
+    """
+
+    assert len(y_gold) == len(y_prediction)
+
+    if len(y_gold) == 0:
+        return 0
+
+    return np.sum(y_gold == y_prediction) / len(y_gold)
+
+
+def evaluate_tree(tree, test_x):
+    """ Evaluate accuracy of trained tree using test data
+    @aanish
+    """
+
+    num_rows, _ = test_x.shape
+    predictions = np.zeros((num_rows,))
+
+    for row in range(num_rows):
+        test_row = test_x[row, :]
+        predictions[row] = predict(tree, test_row)
+
+    return predictions
+
+
+def predict(tree, test_row):
+    """ Make a prediction on an input dataset using a trained tree
+    """
+
+    if tree['feature'] is None:
+        return tree['value']
+
+    cur_feature = tree['feature']
+    cur_value = tree['value']
+    go_right = test_row[cur_feature] > cur_value
+    if go_right:
+        return predict(tree['right'], test_row)
+    else:
+        return predict(tree['left'], test_row)
+
+
 def find_split(X, Y):
     """
     This function is the big one. It should determine the optimal attribute and value to split on
@@ -300,7 +350,8 @@ def compute_accuracy_helper(tree, X_test, Y_test):
 
 
 def prune_tree(tree, X_test, Y_test):
-    """wait till next week's lecture to see how to implement this"""
+    """ Given a trained tree and test data, prune the tree to maximize accuracy
+    """
     # @Aanish
     # for each node connected to two leaves, replace with single leaf and
     # run evaluation_option2. If it's better, replace the node with the leaf
