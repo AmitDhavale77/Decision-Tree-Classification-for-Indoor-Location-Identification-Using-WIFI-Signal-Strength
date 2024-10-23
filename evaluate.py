@@ -186,7 +186,7 @@ def make_data_folds(dataset, random_seed, k=10):
 
     data_shuffled = dataset[shuffled_indices]
 
-    parts = np.split(data_shuffled, 10, axis=0)
+    parts = np.array_split(data_shuffled, 10, axis=0)
 
     final_eval = {}
 
@@ -242,18 +242,4 @@ def make_data_folds(dataset, random_seed, k=10):
 
     return final_eval 
 
-matrix = np.array([
-    [95, 20, 74, 83, 18, 96, 82, 77, 89, 43],
-    [17, 24,  4, 93, 48, 18, 22, 15, 15, 19],
-    [63,  6, 73, 89, 15, 20, 92, 43, 10, 83],
-    [59, 87, 59, 53, 72,  7, 36, 45, 37, 49],
-    [25, 71, 48,  1, 19, 41, 76, 58, 89, 48],
-    [39,  6, 46, 44, 79, 43, 81, 56, 20, 52],
-    [94, 42,  3, 88, 41, 29, 80, 27, 81, 85],
-    [33, 19,  9, 17, 53, 15, 34, 94, 96, 56],
-    [51, 87, 45, 90, 38, 82,  9, 52, 43, 37],
-    [91, 16, 78,  5, 41, 97, 81, 64, 46, 13],
-])
-
-print(make_data_folds(matrix, random_seed=0))
 
