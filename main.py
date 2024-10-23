@@ -2,7 +2,7 @@ import copy
 import numpy as np
 
 from visualize import visualize_tree, tree_to_json, json_to_tree
-from evaluate import evaluate_tree, compute_accuracy
+from evaluate import predictions, simple_compute_accuracy
 
 
 def load_data(filename):
@@ -295,8 +295,8 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
 
 
 def compute_accuracy_helper(tree, X_test, Y_test):
-    y_predictions = evaluate_tree(tree, X_test)
-    return round(compute_accuracy(Y_test, y_predictions), 2)
+    y_predictions = predictions(tree, X_test)
+    return round(simple_compute_accuracy(Y_test, y_predictions), 2)
 
 
 def prune_tree(tree, X_test, Y_test):
@@ -420,19 +420,23 @@ if __name__ == "__main__":
     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
     og_depth = get_tree_depth(decision_tree)
     og_span = count_leaves(decision_tree)
+    og_accuracy = compute_accuracy_helper(decision_tree, X_test, Y_test)
     print(f"Original Depth: {og_depth} & Span: {og_span}")
+    print(f"Original Accuracy: {og_accuracy}")
 
     # visualize_tree(decision_tree, og_depth)
 
     # tree_to_json(decision_tree, 'tree.json')
     # decision_tree = json_to_tree('noisy_tree.json')
     # visualize_tree(decision_tree, 11)
-    # accuracy = compute_accuracy_helper(decision_tree, X_test, Y_test)
     # print(f"Accuracy on test set: {accuracy*100}%")
 
     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
     new_depth = get_tree_depth(pruned_tree)
     new_span = count_leaves(pruned_tree)
-    print(f"Pruned Depth: {new_depth} & Span: {new_span}")
+    new_accuracy = compute_accuracy_helper(pruned_tree, X_test, Y_test)
 
-    # visualize_tree(pruned_tree, new_depth)
+    print(f"Pruned Depth: {new_depth} & Span: {new_span}")
+    print(f"New Accuracy: {new_accuracy}")
+
+    visualize_tree(pruned_tree, new_depth)
