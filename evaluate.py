@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def simple_compute_accuracy(y_gold, y_prediction):
+def simple_compute_accuracy(tree, X_test, Y_test):
     """ Compute the accuracy given the ground truth and predictions
 
     Args:
@@ -12,12 +12,14 @@ def simple_compute_accuracy(y_gold, y_prediction):
         accuracy (float): accuracy value between 0 and 1
     """
 
-    assert len(y_gold) == len(y_prediction)
+    y_predictions = predictions(tree, X_test)
 
-    if len(y_gold) == 0:
+    assert len(Y_test) == len(y_predictions)
+
+    if len(Y_test) == 0:
         return 0
 
-    return np.sum(y_gold == y_prediction) / len(y_gold)
+    return round(np.sum(Y_test == y_predictions) / len(Y_test), 2)
 
 
 def predictions(tree, test_x):
