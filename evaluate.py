@@ -1,26 +1,7 @@
 import numpy as np
-from main import decision_tree_learning
-
-# Do evaluation stuff
 
 
-# evaluation_example = {
-#     '1': {
-#         'precision': None,
-#         'recall': None,
-#         'f1': None,
-#     },
-#     # etc... for 2, 3, 4
-#     'accuracy': None,
-#     'confusion_matrix': None # 4x4 matrix
-#     'overall': {
-#         # same as above
-
-#     }
-# }
-
-
-def simple_compute_accuracy(y_gold, y_prediction):
+def simple_compute_accuracy(tree, X_test, Y_test):
     """ Compute the accuracy given the ground truth and predictions
 
     Args:
@@ -31,12 +12,14 @@ def simple_compute_accuracy(y_gold, y_prediction):
         accuracy (float): accuracy value between 0 and 1
     """
 
-    assert len(y_gold) == len(y_prediction)
+    y_predictions = predictions(tree, X_test)
 
-    if len(y_gold) == 0:
+    assert len(Y_test) == len(y_predictions)
+
+    if len(Y_test) == 0:
         return 0
 
-    return np.sum(y_gold == y_prediction) / len(y_gold)
+    return round(np.sum(Y_test == y_predictions) / len(Y_test), 2)
 
 
 def predictions(tree, test_x):
@@ -104,20 +87,22 @@ def compute_precision(confusion_matrix, classification):
 
     Returns: float
     """
-    denominator = np.sum(confusion_matrix[:, classification])
+    index = classification - 1
+    denominator = np.sum(confusion_matrix[:, index])
     if denominator == 0:
         return None
     else:
-        return confusion_matrix[classification, classification] / denominator
+        return confusion_matrix[index, index] / denominator
 
 
 def compute_recall(confusion_matrix, classification):
     """ """
-    denominator = np.sum(confusion_matrix[classification, :])
+    index = classification - 1
+    denominator = np.sum(confusion_matrix[index, :])
     if denominator == 0:
         return None
     else:
-        return confusion_matrix[classification, classification] / denominator
+        return confusion_matrix[index, index] / denominator
 
 
 def compute_f1(precision, recall):
@@ -163,11 +148,11 @@ def get_confusion_matrix(y_gold, y_prediction):
     """
     # create empty matrix
     n_classifications = len(np.unique(y_gold))
-    confusion_matrix = np.zeros((n_classifications, n_classifications))
+    confusion_matrix = np.zeros((n_classifications, n_classifications), dtype=np.int64)
 
     # fill in confusion matrix
     for gold, prediction in zip(y_gold, y_prediction):
-        confusion_matrix[gold, prediction] += 1
+        confusion_matrix[int(gold) - 1, int(prediction) - 1] += 1
 
     return confusion_matrix
 
@@ -206,7 +191,7 @@ def compute_macroaverage(evaluation, classes):
     return macroaverage
 
 
-def evaluation(test_db, trained_tree):
+def evaluation(x_test, y_test, trained_tree):
     """
     @Lauren
     Confusion Matrix (4x4 matrix)
@@ -219,11 +204,9 @@ def evaluation(test_db, trained_tree):
 
     Return a dictionary with all of these metrics
     """
-    # predict output
-    x_test = test_db[:, :-1]
-    y_gold = test_db[:, -1]
+
     y_prediction = predictions(trained_tree, x_test)
-    confusion_matrix = get_confusion_matrix(y_gold, y_prediction)
+    confusion_matrix = get_confusion_matrix(y_test, y_prediction)
 
     # evaluate results
     evaluation = {}
@@ -231,7 +214,7 @@ def evaluation(test_db, trained_tree):
     evaluation["accuracy"] = compute_accuracy(confusion_matrix)
 
     # evaluate each classification
-    classes = [str(classification) for classification in np.unique(test_db[:, -1])]
+    classes = [str(classification) for classification in np.unique(y_test)]
     for classification in classes:
         evaluation[classification] = get_classification_evaluation(
             confusion_matrix, int(classification)
@@ -255,84 +238,3 @@ def advanced_k_fold(dataset, k=10):
 
     # this will use prune_tree to test on different trees
     return
-
-
-def make_data_folds(dataset, random_seed, k=10):
-    # @Ola
-    # Look at existing version of train_test_split but will need to make folds deterministically
-
-    # Shuffle data
-    # Then pick first two rows for test, rest is training+validation
-    # Evaluate that data
-    # then pick next two rows, cont...
-    # As you go through, keep track of averaged evaluation metrics (all of them)
-
-    # Return evaluation dictionary in the same format as above one but
-    # averaged across the k folds
-    # Create random generator
-
-    #what is the split is not equal??
-    random_generator = np.random.default_rng(random_seed)
-
-    # Create array of shuffled indices
-    shuffled_indices = random_generator.permutation(len(dataset))
-
-    data_shuffled = dataset[shuffled_indices]
-
-    parts = np.array_split(data_shuffled, 10, axis=0)
-
-    final_eval = {}
-
-    for index, part in enumerate(parts):
-        other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
-
-        # Concatenate all other parts
-        combined_data = np.vstack(other_parts)  # Stack all other parts vertically
-
-        # Separate features (X) and labels (Y)
-        X_train = combined_data[:, :-1]  # All columns except the last
-        Y_train = combined_data[:, -1]   # Last column
-
-        decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
-
-        evaluation_metrics = evaluation(part, decision_tree)
-
-        # add the confusion matrix
-        final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
-
-        # add the accuracy
-        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
-
-        # calculate sum of metrics for exach class
-        for index in range(1,4):
-            index_str = str(index)
-            for word in ['precision', 'recall']:
-                final_entry = final_eval.get(index_str, {})
-                
-                # Safely get the value or default to 0 if not present
-                final_eval[index_str] = final_entry  # Ensure it exists in final_eval
-                final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
-    
-    # calculate averages across all folds
-    for index in range(1,4):
-        index_str = str(index)
-        for word in ['precision', 'recall']:
-            final_eval[index_str][word] /= 10
-        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
-
-    # calculate accuracy
-    confusion_matrix = final_eval['confusion_matrix']
-    tp = confusion_matrix[0][0]
-    fn = confusion_matrix[0][1]
-    fp = confusion_matrix[1][0]
-    tn = confusion_matrix[1][1]
-    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
-
-    # calculate macro-averaged overall metrics
-    final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
-    final_eval['overall']['recall'] = (final_eval['1']['recall']+final_eval['2']['recall']+final_eval['3']['recall']+final_eval['4']['recall'])/4
-    final_eval['overall']['f1'] = (final_eval['1']['f1']+final_eval['2']['f1']+final_eval['3']['f1']+final_eval['4']['f1'])/4
-
-    return final_eval 
-
-

@@ -1,8 +1,8 @@
-import copy
 import numpy as np
 
+from evaluate import evaluation, predictions, simple_compute_accuracy
+from prune import prune_tree
 from visualize import visualize_tree, tree_to_json, json_to_tree
-from evaluate import predictions, simple_compute_accuracy
 
 
 def load_data(filename):
@@ -63,9 +63,88 @@ def train_test_split(X, Y, test_proportion, random_seed):
     return X_train, Y_train, X_test, Y_test
 
 
-def create_node(feature, value, left, right):
+def make_data_folds(dataset, random_seed, k=10):
     """
-    @amit - convert to use class for node
+    """
+    # Look at existing version of train_test_split but will need to make folds deterministically
+
+    # Shuffle data
+    # Then pick first two rows for test, rest is training+validation
+    # Evaluate that data
+    # then pick next two rows, cont...
+    # As you go through, keep track of averaged evaluation metrics (all of them)
+
+    # Return evaluation dictionary in the same format as above one but
+    # averaged across the k folds
+    # Create random generator
+
+    #what is the split is not equal??
+    random_generator = np.random.default_rng(random_seed)
+
+    # Create array of shuffled indices
+    shuffled_indices = random_generator.permutation(len(dataset))
+
+    data_shuffled = dataset[shuffled_indices]
+
+    parts = np.array_split(data_shuffled, 10, axis=0)
+
+    final_eval = {}
+
+    for index, part in enumerate(parts):
+        other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
+
+        # Concatenate all other parts
+        combined_data = np.vstack(other_parts)  # Stack all other parts vertically
+
+        # Separate features (X) and labels (Y)
+        X_train = combined_data[:, :-1]  # All columns except the last
+        Y_train = combined_data[:, -1]   # Last column
+
+        decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+
+        evaluation_metrics = evaluation(part, decision_tree)
+
+        # add the confusion matrix
+        final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
+
+        # add the accuracy
+        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
+
+        # calculate sum of metrics for exach class
+        for index in range(1,4):
+            index_str = str(index)
+            for word in ['precision', 'recall']:
+                final_entry = final_eval.get(index_str, {})
+
+                # Safely get the value or default to 0 if not present
+                final_eval[index_str] = final_entry  # Ensure it exists in final_eval
+                final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
+
+    # calculate averages across all folds
+    for index in range(1,4):
+        index_str = str(index)
+        for word in ['precision', 'recall']:
+            final_eval[index_str][word] /= 10
+        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
+
+    # calculate accuracy
+    confusion_matrix = final_eval['confusion_matrix']
+    tp = confusion_matrix[0][0]
+    fn = confusion_matrix[0][1]
+    fp = confusion_matrix[1][0]
+    tn = confusion_matrix[1][1]
+    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
+
+    # calculate macro-averaged overall metrics
+    final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
+    final_eval['overall']['recall'] = (final_eval['1']['recall']+final_eval['2']['recall']+final_eval['3']['recall']+final_eval['4']['recall'])/4
+    final_eval['overall']['f1'] = (final_eval['1']['f1']+final_eval['2']['f1']+final_eval['3']['f1']+final_eval['4']['f1'])/4
+
+    return final_eval
+
+
+def create_node(feature, value, left, right):
+    """ Given node attributes, instantiate the node as a dictionary
     """
 
     node = {
@@ -79,9 +158,9 @@ def create_node(feature, value, left, right):
 
 
 def calculate_entropy(data):
-    """
+    """ Calculate the entropy of a given array
+
     data : np.array with 1 dimension
-    @ola
     """
 
     if len(data) == 1:
@@ -103,9 +182,7 @@ def calculate_entropy(data):
 
 
 def calculate_information_gain(Y, subsets):
-    """
-    @ola - related to above
-    see if integral option is better (we think no but worth checking?)
+    """ Calculate the information gain of comparing Y with subsets (Yleft, Yright)
 
     dataset : np.array with last column indicating classes
 
@@ -123,17 +200,14 @@ def calculate_information_gain(Y, subsets):
 
 
 def find_split(X, Y):
-    """
-    This function is the big one. It should determine the optimal attribute and value to split on
-    @lauren to investigate and possibly delegate
+    """ Given input dataset X and Y, determine the optimal way to split the data
+    by iteratively calculating information gain and finding the maximum
 
-    Args: dataset - TODO decide on data structure
+    Args: X, Y
 
-    Returns: (feature, (split_point, information_gain))
-                where split point is the value in the feature to split on
-                so left split is values <= split_point and
-                right split is values > split_point
+    Returns: best_feature, best_value
     """
+
     # calculate information gain at each potential split point for each feature
     max_info_gain = 0
     best_feature = None
@@ -217,8 +291,8 @@ def get_midpoints(X, feature):
         (X_feature[i] + X_feature[i + 1]) / 2 for i in range(len(X_feature) - 1)
     ]
 
-    midpoints = list(set(midpoints))  # remove duplicates
-    return np.array(midpoints)
+    midpoints = np.array(list(set(midpoints)))  # Remove duplicates
+    return midpoints
 
 
 def split_data(X, Y, split_attribute, split_value):
@@ -294,67 +368,10 @@ def decision_tree_learning(X, Y, depth=0, max_depth=None):
     return node, max(left_depth, right_depth)
 
 
-def compute_accuracy_helper(tree, X_test, Y_test):
-    y_predictions = predictions(tree, X_test)
-    return round(simple_compute_accuracy(Y_test, y_predictions), 2)
-
-
-def prune_tree(tree, X_test, Y_test):
-    """ Given a trained tree and test data, prune the tree to maximize accuracy
-    """
-    # @Aanish
-    # for each node connected to two leaves, replace with single leaf and
-    # run evaluation_option2. If it's better, replace the node with the leaf
-    # and keep going recursively
-
-    # use (1 - accuracy) on validation 
-    # do we depth first, or breadth first, or ???
-
-    # use evaluation(test_db, trained_tree) to get the accuracy
-
-    nodes_with_two_leaves = find_nodes_with_two_leaves(tree, [])
-    nodes_visited = set()
-
-    while len(nodes_with_two_leaves) > 0:
-
-        node = nodes_with_two_leaves.pop()
-        if node in nodes_visited:
-            continue
-        else:
-            nodes_visited.add(node)
-
-        tmp_tree_left = copy.deepcopy(tree)
-        tmp_tree_right = copy.deepcopy(tree)
-
-        replace_node(tmp_tree_left, node, False)
-        replace_node(tmp_tree_right, node, True)
-
-        baseline_accuracy = compute_accuracy_helper(tree, X_test, Y_test)
-        left_accuracy = compute_accuracy_helper(tmp_tree_left, X_test, Y_test)
-        right_accuracy = compute_accuracy_helper(tmp_tree_right, X_test, Y_test)
-
-        if left_accuracy >= baseline_accuracy or right_accuracy >= baseline_accuracy:
-
-            if left_accuracy >= right_accuracy:
-                # print(f"Left accuracy better for X[{node[0]}] > {node[1]}. {left_accuracy * 100}% vs {baseline_accuracy * 100}%")
-                tree = tmp_tree_left
-            else:
-                # print(f"Right accuracy better for X[{node[0]}] > {node[1]}. {right_accuracy * 100}% vs {baseline_accuracy * 100}%")
-                tree = tmp_tree_right
-
-        new_nodes_with_two_leaves = find_nodes_with_two_leaves(tree, [])
-        for new_node in new_nodes_with_two_leaves:
-            if new_node in nodes_visited:
-                continue
-            else:
-                nodes_with_two_leaves.append(new_node)
-
-    return tree
-
-
 def count_leaves(tree):
     """ Calculate number of leaves i.e max span of the tree
     """
+
     if tree is None:
         return 0
     elif tree['feature'] is None:
@@ -366,47 +383,10 @@ def count_leaves(tree):
 def get_tree_depth(tree):
     """ Calculate tree depth
     """
+
     if tree is None or tree['feature'] is None:
         return 0
     return 1 + max(get_tree_depth(tree['left']), get_tree_depth(tree['right']))
-
-
-def find_nodes_with_two_leaves(tree, matching_nodes):
-
-    # Leaf node
-    if tree['feature'] is None:
-        return
-
-    if tree['left']['feature'] is None and tree['right']['feature'] is None:
-        # print(f'Found! {tree['feature']} > {tree['value']}')
-        matching_nodes.append((tree['feature'], tree['value']))
-        return matching_nodes
-
-    find_nodes_with_two_leaves(tree['left'], matching_nodes)
-    find_nodes_with_two_leaves(tree['right'], matching_nodes)
-
-    return matching_nodes
-
-
-def replace_node(tree, node, use_right=True):
-
-    node_feature, node_value = node
-    # Leaf node
-    if tree['feature'] is None:
-        return
-
-    if tree['feature'] == node_feature and tree['value'] == node_value:
-        if use_right:
-            tree['value'] = tree['right']['value']
-        else:
-            tree['value'] = tree['left']['value']
-        tree['feature'] = None
-        tree['left'] = None
-        tree['right'] = None
-        return
-
-    replace_node(tree['left'], node, use_right)
-    replace_node(tree['right'], node, use_right)
 
 
 if __name__ == "__main__":
@@ -421,12 +401,12 @@ if __name__ == "__main__":
     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
     og_depth = get_tree_depth(decision_tree)
     og_span = count_leaves(decision_tree)
-    og_accuracy = compute_accuracy_helper(decision_tree, X_test, Y_test)
+    og_accuracy = simple_compute_accuracy(decision_tree, X_test, Y_test)
     print(f"Original Depth: {og_depth} & Span: {og_span}")
     print(f"Original Accuracy: {og_accuracy}")
 
     # visualize_tree(decision_tree, og_depth)
-
+    eval_dict = evaluation(X_test, Y_test, decision_tree)
     # tree_to_json(decision_tree, 'tree.json')
     # decision_tree = json_to_tree('noisy_tree.json')
     # visualize_tree(decision_tree, 11)
@@ -435,9 +415,9 @@ if __name__ == "__main__":
     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
     new_depth = get_tree_depth(pruned_tree)
     new_span = count_leaves(pruned_tree)
-    new_accuracy = compute_accuracy_helper(pruned_tree, X_test, Y_test)
+    new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
 
     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
     print(f"New Accuracy: {new_accuracy}")
 
-    visualize_tree(pruned_tree, new_depth)
+    # visualize_tree(pruned_tree, new_depth)
