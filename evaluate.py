@@ -85,20 +85,22 @@ def compute_precision(confusion_matrix, classification):
 
     Returns: float
     """
-    denominator = np.sum(confusion_matrix[:, classification])
+    index = classification - 1
+    denominator = np.sum(confusion_matrix[:, index])
     if denominator == 0:
         return None
     else:
-        return confusion_matrix[classification, classification] / denominator
+        return confusion_matrix[index, index] / denominator
 
 
 def compute_recall(confusion_matrix, classification):
     """ """
-    denominator = np.sum(confusion_matrix[classification, :])
+    index = classification - 1
+    denominator = np.sum(confusion_matrix[index, :])
     if denominator == 0:
         return None
     else:
-        return confusion_matrix[classification, classification] / denominator
+        return confusion_matrix[index, index] / denominator
 
 
 def compute_f1(precision, recall):
@@ -144,11 +146,11 @@ def get_confusion_matrix(y_gold, y_prediction):
     """
     # create empty matrix
     n_classifications = len(np.unique(y_gold))
-    confusion_matrix = np.zeros((n_classifications, n_classifications))
+    confusion_matrix = np.zeros((n_classifications, n_classifications), dtype=np.int64)
 
     # fill in confusion matrix
     for gold, prediction in zip(y_gold, y_prediction):
-        confusion_matrix[gold, prediction] += 1
+        confusion_matrix[int(gold) - 1, int(prediction) - 1] += 1
 
     return confusion_matrix
 
@@ -187,7 +189,7 @@ def compute_macroaverage(evaluation, classes):
     return macroaverage
 
 
-def evaluation(test_db, trained_tree):
+def evaluation(x_test, y_test, trained_tree):
     """
     @Lauren
     Confusion Matrix (4x4 matrix)
@@ -200,11 +202,9 @@ def evaluation(test_db, trained_tree):
 
     Return a dictionary with all of these metrics
     """
-    # predict output
-    x_test = test_db[:, :-1]
-    y_gold = test_db[:, -1]
+
     y_prediction = predictions(trained_tree, x_test)
-    confusion_matrix = get_confusion_matrix(y_gold, y_prediction)
+    confusion_matrix = get_confusion_matrix(y_test, y_prediction)
 
     # evaluate results
     evaluation = {}
@@ -212,7 +212,7 @@ def evaluation(test_db, trained_tree):
     evaluation["accuracy"] = compute_accuracy(confusion_matrix)
 
     # evaluate each classification
-    classes = [str(classification) for classification in np.unique(test_db[:, -1])]
+    classes = [str(classification) for classification in np.unique(y_test)]
     for classification in classes:
         evaluation[classification] = get_classification_evaluation(
             confusion_matrix, int(classification)
