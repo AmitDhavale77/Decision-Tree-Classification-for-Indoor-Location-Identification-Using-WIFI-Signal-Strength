@@ -84,7 +84,12 @@ def make_data_folds(dataset, random_seed, k=10):
     # Create array of shuffled indices
     shuffled_indices = random_generator.permutation(len(dataset))
 
-    data_shuffled = dataset[shuffled_indices]
+    #dataset = np.array(dataset)
+    #data_shuffled = dataset[shuffled_indices]
+    #print(type(shuffled_indices[0]))
+    #data_shuffled = [dataset[i] for i in shuffled_indices]
+    #print(dataset[0])
+    data_shuffled = [dataset[i] for i in shuffled_indices] 
 
     parts = np.array_split(data_shuffled, 10, axis=0)
 
@@ -100,9 +105,11 @@ def make_data_folds(dataset, random_seed, k=10):
         X_train = combined_data[:, :-1]  # All columns except the last
         Y_train = combined_data[:, -1]   # Last column
 
+
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
 
-        evaluation_metrics = evaluation(part, decision_tree)
+
+        evaluation_metrics = evaluation(part[:,:-1], part[:,-1], decision_tree)
 
         # add the confusion matrix
         final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
@@ -111,7 +118,7 @@ def make_data_folds(dataset, random_seed, k=10):
         #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
 
         # calculate sum of metrics for exach class
-        for index in range(1,4):
+        for index in [1.0, 2.0, 3.0, 4.0]:
             index_str = str(index)
             for word in ['precision', 'recall']:
                 final_entry = final_eval.get(index_str, {})
@@ -121,7 +128,7 @@ def make_data_folds(dataset, random_seed, k=10):
                 final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
 
     # calculate averages across all folds
-    for index in range(1,4):
+    for index in [1.0, 2.0, 3.0, 4.0]:
         index_str = str(index)
         for word in ['precision', 'recall']:
             final_eval[index_str][word] /= 10
@@ -136,9 +143,10 @@ def make_data_folds(dataset, random_seed, k=10):
     final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
 
     # calculate macro-averaged overall metrics
-    final_eval['overall']['precision'] = (final_eval['1']['precision']+final_eval['2']['precision']+final_eval['3']['precision']+final_eval['4']['precision'])/4
-    final_eval['overall']['recall'] = (final_eval['1']['recall']+final_eval['2']['recall']+final_eval['3']['recall']+final_eval['4']['recall'])/4
-    final_eval['overall']['f1'] = (final_eval['1']['f1']+final_eval['2']['f1']+final_eval['3']['f1']+final_eval['4']['f1'])/4
+    final_eval['overall'] = {}
+    final_eval['overall']['precision'] = (final_eval['1.0']['precision']+final_eval['2.0']['precision']+final_eval['3.0']['precision']+final_eval['4.0']['precision'])/4
+    final_eval['overall']['recall'] = (final_eval['1.0']['recall']+final_eval['2.0']['recall']+final_eval['3.0']['recall']+final_eval['4.0']['recall'])/4
+    final_eval['overall']['f1'] = (final_eval['1.0']['f1']+final_eval['2.0']['f1']+final_eval['3.0']['f1']+final_eval['4.0']['f1'])/4
 
     return final_eval
 
@@ -419,5 +427,8 @@ if __name__ == "__main__":
 
     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
     print(f"New Accuracy: {new_accuracy}")
+
+    data = np.loadtxt(clean_filename)
+    print(make_data_folds(data, 0, k=10))
 
     # visualize_tree(pruned_tree, new_depth)

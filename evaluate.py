@@ -217,7 +217,7 @@ def evaluation(x_test, y_test, trained_tree):
     classes = [str(classification) for classification in np.unique(y_test)]
     for classification in classes:
         evaluation[classification] = get_classification_evaluation(
-            confusion_matrix, int(classification)
+            confusion_matrix, int(float(classification))
         )
 
     # macroaverage overall metrics
