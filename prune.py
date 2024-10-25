@@ -90,8 +90,8 @@ def replace_node(tree, node, use_right=True):
     if tree['feature'] is None:
         return
 
-    # Current node is a match
-    if tree['feature'] == node_feature and tree['value'] == node_value:
+    # Current node is a match and validate that it is connected to two leaves
+    if tree['feature'] == node_feature and tree['value'] == node_value and tree['left']['feature'] is None and tree['right']['feature'] is None:
         if use_right:
             tree['value'] = tree['right']['value']
         else:
