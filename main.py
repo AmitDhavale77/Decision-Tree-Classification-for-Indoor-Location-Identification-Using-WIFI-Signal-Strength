@@ -1,6 +1,6 @@
 import numpy as np
 
-from evaluate import evaluation, compute_accuracy, compute_macroaverage, compute_f1
+from evaluate import evaluation, compute_accuracy, compute_macroaverage, compute_f1, simple_compute_accuracy
 from prune import prune_tree
 from visualize import visualize_tree, tree_to_json, json_to_tree
 
@@ -133,7 +133,7 @@ def make_data_folds(dataset, random_seed, k=10):
 
 
     # calculate macro-averaged overall metrics
-    macro_avg = compute_macroaverage(evaluation_metrics, classes)
+    macro_avg = compute_macroaverage(final_eval, classes)
     final_eval['overall'] = {}
     for metric in macro_avg :
         final_eval['overall'][metric] = macro_avg[metric]
@@ -392,7 +392,7 @@ if __name__ == "__main__":
     clean_filename = 'wifi_db/clean_dataset.txt'
     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
-    """
+
     X, Y = load_data(noisy_filename)
 
     X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
@@ -411,7 +411,7 @@ if __name__ == "__main__":
     # decision_tree = json_to_tree('noisy_tree.json')
     # visualize_tree(decision_tree, 11)
     # print(f"Accuracy on test set: {accuracy*100}%")
-    print(eval_dict)
+    #print(eval_dict)
 
 
     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
@@ -421,7 +421,7 @@ if __name__ == "__main__":
 
     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
     print(f"New Accuracy: {new_accuracy}")
-"""
+
     data = np.loadtxt(noisy_filename)
     print(make_data_folds(data, 42, k=10))
 
