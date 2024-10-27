@@ -1,6 +1,6 @@
 import numpy as np
 
-from evaluate import evaluation, predictions, simple_compute_accuracy
+from evaluate import evaluation, compute_accuracy, compute_macroaverage, compute_f1
 from prune import prune_tree
 from visualize import visualize_tree, tree_to_json, json_to_tree
 
@@ -78,75 +78,66 @@ def make_data_folds(dataset, random_seed, k=10):
     # averaged across the k folds
     # Create random generator
 
-    #what is the split is not equal??
+
     random_generator = np.random.default_rng(random_seed)
 
     # Create array of shuffled indices
     shuffled_indices = random_generator.permutation(len(dataset))
 
-    #dataset = np.array(dataset)
-    #data_shuffled = dataset[shuffled_indices]
-    #print(type(shuffled_indices[0]))
-    #data_shuffled = [dataset[i] for i in shuffled_indices]
-    #print(dataset[0])
+
     data_shuffled = [dataset[i] for i in shuffled_indices] 
 
-    parts = np.array_split(data_shuffled, 10, axis=0)
+    test_parts = np.array_split(data_shuffled, k, axis=0)
 
     final_eval = {}
 
-    for index, part in enumerate(parts):
-        other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
+    labels = np.unique(dataset[:,-1])
 
-        # Concatenate all other parts
-        combined_data = np.vstack(other_parts)  # Stack all other parts vertically
+    classes = [str(classification) for classification in labels]
 
-        # Separate features (X) and labels (Y)
-        X_train = combined_data[:, :-1]  # All columns except the last
-        Y_train = combined_data[:, -1]   # Last column
+    for index, test_part in enumerate(test_parts):
+        other_test_parts = [p for i, p in enumerate(test_parts) if i != index]  # exclude current part by index
 
+        # concatenate all other parts
+        combined_data = np.vstack(other_test_parts)  
+
+        # separate features and labels 
+        X_train = combined_data[:, :-1]  # all columns except the last
+        Y_train = combined_data[:, -1]   # last column
 
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
 
-
-        evaluation_metrics = evaluation(part[:,:-1], part[:,-1], decision_tree)
+        evaluation_metrics = evaluation(test_part[:,:-1], test_part[:,-1], decision_tree)
 
         # add the confusion matrix
         final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
 
-        # add the accuracy
-        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
-
         # calculate sum of metrics for exach class
-        for index in [1.0, 2.0, 3.0, 4.0]:
-            index_str = str(index)
-            for word in ['precision', 'recall']:
+        for index_str in classes:
+            for metric in ['precision', 'recall']:
                 final_entry = final_eval.get(index_str, {})
 
-                # Safely get the value or default to 0 if not present
-                final_eval[index_str] = final_entry  # Ensure it exists in final_eval
-                final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
+                # safely get the value or default to 0 if not present
+                final_eval[index_str] = final_entry  
+                final_eval[index_str][metric] = final_entry.get(metric, 0) + evaluation_metrics[index_str].get(metric, 0)
 
     # calculate averages across all folds
-    for index in [1.0, 2.0, 3.0, 4.0]:
-        index_str = str(index)
-        for word in ['precision', 'recall']:
-            final_eval[index_str][word] /= 10
-        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
+    for index_str in classes:
+        for metric in ['precision', 'recall']:
+            final_eval[index_str][metric] /= k
+        final_eval[index_str]['f1'] = compute_f1(final_eval[index_str]['precision'], final_eval[index_str]['recall'])
 
     # calculate accuracy
-    confusion_matrix = final_eval['confusion_matrix']
-    tp = confusion_matrix[0][0]
-    fn = confusion_matrix[0][1]
-    fp = confusion_matrix[1][0]
-    tn = confusion_matrix[1][1]
-    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
+    confusion_matrix1 = final_eval['confusion_matrix']
+    final_eval['accuracy'] = compute_accuracy(confusion_matrix1)
+
 
     # calculate macro-averaged overall metrics
+    macro_avg = compute_macroaverage(evaluation_metrics, classes)
     final_eval['overall'] = {}
-    final_eval['overall']['precision'] = (final_eval['1.0']['precision']+final_eval['2.0']['precision']+final_eval['3.0']['precision']+final_eval['4.0']['precision'])/4
-    final_eval['overall']['recall'] = (final_eval['1.0']['recall']+final_eval['2.0']['recall']+final_eval['3.0']['recall']+final_eval['4.0']['recall'])/4
-    final_eval['overall']['f1'] = (final_eval['1.0']['f1']+final_eval['2.0']['f1']+final_eval['3.0']['f1']+final_eval['4.0']['f1'])/4
+    for metric in macro_avg :
+        final_eval['overall'][metric] = macro_avg[metric]
+
 
     return final_eval
 
@@ -401,6 +392,7 @@ if __name__ == "__main__":
     clean_filename = 'wifi_db/clean_dataset.txt'
     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
+    """
     X, Y = load_data(noisy_filename)
 
     X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
@@ -419,6 +411,8 @@ if __name__ == "__main__":
     # decision_tree = json_to_tree('noisy_tree.json')
     # visualize_tree(decision_tree, 11)
     # print(f"Accuracy on test set: {accuracy*100}%")
+    print(eval_dict)
+
 
     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
     new_depth = get_tree_depth(pruned_tree)
@@ -427,8 +421,8 @@ if __name__ == "__main__":
 
     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
     print(f"New Accuracy: {new_accuracy}")
-
-    data = np.loadtxt(clean_filename)
-    print(make_data_folds(data, 0, k=10))
+"""
+    data = np.loadtxt(noisy_filename)
+    print(make_data_folds(data, 42, k=10))
 
     # visualize_tree(pruned_tree, new_depth)
