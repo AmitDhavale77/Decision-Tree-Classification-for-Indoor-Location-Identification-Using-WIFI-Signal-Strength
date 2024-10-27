@@ -4,6 +4,8 @@ from evaluate import evaluation, predictions, simple_compute_accuracy
 from prune import prune_tree
 from visualize import visualize_tree, tree_to_json, json_to_tree
 
+import tensorflow as tf
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 def load_data(filename):
     """Read in the dataset from the specified filepath
@@ -63,6 +65,146 @@ def train_test_split(X, Y, test_proportion, random_seed):
     return X_train, Y_train, X_test, Y_test
 
 
+def nested_k_folds(X_data, Y_data, k=10, random_generator=np.random.default_rng(seed = 60012)):
+    shuffled_indices = random_generator.permutation(len(Y_data))
+
+    split_indices = np.array_split(shuffled_indices, k)
+
+    #print(split_indices)
+
+    eval_list = []
+    #total_eval_list = []
+    Y_data = Y_data.reshape(-1, 1) if Y_data.ndim == 1 else Y_data
+
+    dataset = np.concatenate((X_data, Y_data), axis=1)
+    #print(dataset)
+
+    for i in range(len(split_indices)):
+        test_split_ind = split_indices[i]
+        #_split_ind = split_indices[i+1:]
+        train_indices = np.hstack(split_indices[:i] + split_indices[i+1:])
+        #train_indices = np.zeros((0, ), dtype=np.int32)
+
+        # for i in _split_ind:
+        #     train_indices = np.hstack([train_indices, i])
+
+        #print("train", train_indices)
+
+        test_split = dataset[test_split_ind,:]
+
+        train_eval_data = dataset[train_indices,:]
+        #Y_data_af_split = Y_data[train_indices]
+     
+        eval_list.append(make_data_folds_new(train_eval_data, test_split))
+
+    return eval_list
+
+
+def make_data_folds_new(dataset, test_split, random_seed = 60012, k=10):
+    """
+    """
+    # Look at existing version of train_test_split but will need to make folds deterministically
+
+    # Shuffle data
+    # Then pick first two rows for test, rest is training+validation
+    # Evaluate that data
+    # then pick next two rows, cont...
+    # As you go through, keep track of averaged evaluation metrics (all of them)
+
+    # Return evaluation dictionary in the same format as above one but
+    # averaged across the k folds
+    # Create random generator
+
+    #what is the split is not equal??
+    random_generator = np.random.default_rng(random_seed)
+
+    # Create array of shuffled indices
+    shuffled_indices = random_generator.permutation(len(dataset))
+
+    #dataset = np.array(dataset)
+    #data_shuffled = dataset[shuffled_indices]
+    #print(type(shuffled_indices[0]))
+    #data_shuffled = [dataset[i] for i in shuffled_indices]
+    #print(dataset[0])
+    data_shuffled = [dataset[i] for i in shuffled_indices] 
+
+    parts = np.array_split(data_shuffled, k, axis=0)
+
+    final_eval = {}
+
+    for index, part in enumerate(parts):
+        other_parts = [p for i, p in enumerate(parts) if i != index]  # Exclude current part by index
+
+        # Concatenate all other parts
+        combined_data = np.vstack(other_parts)  # Stack all other parts vertically
+
+        # Separate features (X) and labels (Y)
+        X_train = combined_data[:, :-1]  # All columns except the last
+        Y_train = combined_data[:, -1]   # Last column
+
+
+        decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+
+
+        val_test_x = part[:, :-1]
+        val_test_y = part[:, -1]
+
+        prune_tree1 = prune_tree(decision_tree, val_test_x, val_test_y)
+
+        #print("prune", prune_tree1)
+
+        X_test = test_split[:, :-1]
+        Y_test = test_split[:, -1]
+
+       # print("inner_testx", X_test)
+        #print("inner_testy", Y_test)
+
+        evaluation_metrics = evaluation(X_test, Y_test, prune_tree1)
+
+        #evaluation_metrics = evaluation(part[:,:-1], part[:,-1], decision_tree)
+
+        # add the confusion matrix
+        final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
+
+        # add the accuracy
+        #final_eval['accuracy'] = final_eval.get('accuracy', 0) + evaluation_metrics['accuracy']
+
+        # calculate sum of metrics for exach class
+        for index in [1.0, 2.0, 3.0, 4.0]:
+            index_str = str(index)
+            for word in ['precision', 'recall']:
+                final_entry = final_eval.get(index_str, {})
+
+                # Safely get the value or default to 0 if not present
+                final_eval[index_str] = final_entry  # Ensure it exists in final_eval
+                final_eval[index_str][word] = final_entry.get(word, 0) + evaluation_metrics[index_str].get(word, 0)
+
+    # calculate averages across all folds
+    for index in [1.0, 2.0, 3.0, 4.0]:
+        index_str = str(index)
+        for word in ['precision', 'recall']:
+            final_eval[index_str][word] /= 10
+        final_eval[index_str]['f1'] = (2*final_eval[index_str]['precision']*final_eval[index_str]['recall'])/(final_eval[index_str]['precision']+final_eval[index_str]['recall'])
+
+    # calculate accuracy
+    confusion_matrix = final_eval['confusion_matrix']
+    tp = confusion_matrix[0][0]
+    fn = confusion_matrix[0][1]
+    fp = confusion_matrix[1][0]
+    tn = confusion_matrix[1][1]
+    final_eval['accuracy'] = (tp+tn)/(tp+tn+fp+fn)
+
+    # calculate macro-averaged overall metrics
+    final_eval['overall'] = {}
+    final_eval['overall']['precision'] = (final_eval['1.0']['precision']+final_eval['2.0']['precision']+final_eval['3.0']['precision']+final_eval['4.0']['precision'])/4
+    final_eval['overall']['recall'] = (final_eval['1.0']['recall']+final_eval['2.0']['recall']+final_eval['3.0']['recall']+final_eval['4.0']['recall'])/4
+    final_eval['overall']['f1'] = (final_eval['1.0']['f1']+final_eval['2.0']['f1']+final_eval['3.0']['f1']+final_eval['4.0']['f1'])/4
+
+    return final_eval
+
+
+
+
 def make_data_folds(dataset, random_seed, k=10):
     """
     """
@@ -91,7 +233,7 @@ def make_data_folds(dataset, random_seed, k=10):
     #print(dataset[0])
     data_shuffled = [dataset[i] for i in shuffled_indices] 
 
-    parts = np.array_split(data_shuffled, 10, axis=0)
+    parts = np.array_split(data_shuffled, k, axis=0)
 
     final_eval = {}
 
@@ -397,38 +539,56 @@ def get_tree_depth(tree):
     return 1 + max(get_tree_depth(tree['left']), get_tree_depth(tree['right']))
 
 
-if __name__ == "__main__":
-    clean_filename = 'wifi_db/clean_dataset.txt'
-    noisy_filename = 'wifi_db/noisy_dataset.txt'
+noisy_filename = 'wifi_db/noisy_dataset.txt'
 
-    X, Y = load_data(noisy_filename)
+X_data, Y_data = load_data(noisy_filename)
 
-    X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
-    # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+eval_list = nested_k_folds(X_data, Y_data, k=10, random_generator=np.random.default_rng(seed = 60012))
 
-    decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
-    og_depth = get_tree_depth(decision_tree)
-    og_span = count_leaves(decision_tree)
-    og_accuracy = simple_compute_accuracy(decision_tree, X_test, Y_test)
-    print(f"Original Depth: {og_depth} & Span: {og_span}")
-    print(f"Original Accuracy: {og_accuracy}")
+print(np.shape(eval_list))
+print(eval_list)
 
-    # visualize_tree(decision_tree, og_depth)
-    eval_dict = evaluation(X_test, Y_test, decision_tree)
-    # tree_to_json(decision_tree, 'tree.json')
-    # decision_tree = json_to_tree('noisy_tree.json')
-    # visualize_tree(decision_tree, 11)
-    # print(f"Accuracy on test set: {accuracy*100}%")
+# t_matrix = np.zeros((4, 4))
+# t_precision_1 = 0
+# t_precision_2 = 0
+# t_precision_3 = 0
+# for dic in eval_list:
+#     matrix = dic.get("confusion_matrix")
+#     t_matrix += matrix
 
-    pruned_tree = prune_tree(decision_tree, X_test, Y_test)
-    new_depth = get_tree_depth(pruned_tree)
-    new_span = count_leaves(pruned_tree)
-    new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
 
-    print(f"Pruned Depth: {new_depth} & Span: {new_span}")
-    print(f"New Accuracy: {new_accuracy}")
+# if __name__ == "__main__":
+#     clean_filename = 'wifi_db/clean_dataset.txt'
+#     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
-    data = np.loadtxt(clean_filename)
-    print(make_data_folds(data, 0, k=10))
+#     X, Y = load_data(noisy_filename)
 
-    # visualize_tree(pruned_tree, new_depth)
+#     X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
+#     # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+
+#     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+#     og_depth = get_tree_depth(decision_tree)
+#     og_span = count_leaves(decision_tree)
+#     og_accuracy = simple_compute_accuracy(decision_tree, X_test, Y_test)
+#     print(f"Original Depth: {og_depth} & Span: {og_span}")
+#     print(f"Original Accuracy: {og_accuracy}")
+
+#     # visualize_tree(decision_tree, og_depth)
+#     eval_dict = evaluation(X_test, Y_test, decision_tree)
+#     # tree_to_json(decision_tree, 'tree.json')
+#     # decision_tree = json_to_tree('noisy_tree.json')
+#     # visualize_tree(decision_tree, 11)
+#     # print(f"Accuracy on test set: {accuracy*100}%")
+
+#     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
+#     new_depth = get_tree_depth(pruned_tree)
+#     new_span = count_leaves(pruned_tree)
+#     new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
+
+#     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
+#     print(f"New Accuracy: {new_accuracy}")
+
+#     data = np.loadtxt(clean_filename)
+#     print(make_data_folds(data, 0, k=10))
+
+#     # visualize_tree(pruned_tree, new_depth)
