@@ -193,14 +193,12 @@ def compute_macroaverage(evaluation, classes):
 
 def evaluation(x_test, y_test, trained_tree):
     """
-    @Lauren
     Confusion Matrix (4x4 matrix)
     Then for each label:
         Accuracy
         Precision/Recall
         F1 score
-    Then do macro-averaging to get overall
-    Should we do micro-averaging??? TBD
+    Then do macro-averaging to get overall metrics
 
     Return a dictionary with all of these metrics
     """
@@ -226,15 +224,48 @@ def evaluation(x_test, y_test, trained_tree):
     return evaluation
 
 
-def advanced_k_fold(dataset, k=10):
-    # @Amit
-    # implement option 2 from slide 30 for cross-validation
-    # this will be used for parameter tuning the pruning part
+def compute_average_evaluation(eval_list):
+    """
+    Compute the average evaluation metrics from a list of evaluation dictionaries
 
-    # this will call make_data_folds
+    Args:
+        eval_list: list of evaluation dictionaries
 
-    # Return evaluation dictionary in the same format as above one but
-    # averaged across the k folds
+    Returns: tuple of average accuracy, confusion matrix, and class metrics
 
-    # this will use prune_tree to test on different trees
-    return
+    """
+    # initialise
+    confusion_matrix = np.zeros((4, 4))
+    class_dict = {}
+    ls_classes = ["1.0", "2.0", "3.0", "4.0"]
+    t_accuracy = 0
+
+    # iterate thrpugh evaluations to get accuracy and confusion matrix
+    for eval in eval_list:
+        confusion_matrix += eval.get("confusion_matrix")
+        t_accuracy += eval.get("accuracy")
+    t_accuracy = t_accuracy / len(eval_list)
+
+    for label in ls_classes:
+        class_dict[label] = get_metrics_label(eval_list, label)
+
+    return t_accuracy, confusion_matrix, class_dict
+
+
+def get_metrics_label(eval_list, label):
+    """
+    Get the average metrics for a class from a list of evaluation dictionaries
+    """
+    precision = []
+    recall = []
+    F1_score = []
+    for dic in eval_list:
+        precision.append(dic.get(label).get("precision"))
+        recall.append(dic.get(label).get("recall"))
+        F1_score.append(dic.get(label).get("f1"))
+
+    mean_precision = sum(precision) / len(precision)
+    mean_recall = sum(recall) / len(recall)
+    mean_F1_score = sum(F1_score) / len(F1_score)
+
+    return (mean_precision, mean_recall, mean_F1_score)
