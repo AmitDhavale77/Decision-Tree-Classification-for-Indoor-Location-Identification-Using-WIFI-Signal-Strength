@@ -4,8 +4,6 @@ from evaluate import evaluation, compute_accuracy, compute_macroaverage, compute
 from prune import prune_tree
 from visualize import visualize_tree, tree_to_json, json_to_tree
 
-import tensorflow as tf
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 def load_data(filename):
     """Read in the dataset from the specified filepath
@@ -565,49 +563,47 @@ if __name__ == "__main__":
 
 
 
-# t_matrix = np.zeros((4, 4))
-# t_precision_1 = 0
-# t_precision_2 = 0
-# t_precision_3 = 0
-# for dic in eval_list:
-#     matrix = dic.get("confusion_matrix")
-#     t_matrix += matrix
+if __name__ == "__main__":
+    clean_filename = 'wifi_db/clean_dataset.txt'
+    noisy_filename = 'wifi_db/noisy_dataset.txt'
+
+    X, Y = load_data(noisy_filename)
+
+    X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
+    # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+
+    decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+    og_depth = get_tree_depth(decision_tree)
+    og_span = count_leaves(decision_tree)
+    og_accuracy = simple_compute_accuracy(decision_tree, X_test, Y_test)
+    print(f"Original Depth: {og_depth} & Span: {og_span}")
+    print(f"Original Accuracy: {og_accuracy}")
+
+    visualize_tree(decision_tree, og_depth)
+    eval_dict = evaluation(X_test, Y_test, decision_tree)
+    tree_to_json(decision_tree, 'tree.json')
+    decision_tree = json_to_tree('noisy_tree.json')
+    visualize_tree(decision_tree, 11)
+    print(f"Accuracy on test set: {accuracy*100}%")
+    print(eval_dict)
 
 
-# if __name__ == "__main__":
-#     clean_filename = 'wifi_db/clean_dataset.txt'
-#     noisy_filename = 'wifi_db/noisy_dataset.txt'
+    pruned_tree = prune_tree(decision_tree, X_test, Y_test)
+    new_depth = get_tree_depth(pruned_tree)
+    new_span = count_leaves(pruned_tree)
+    new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
 
-#     X, Y = load_data(noisy_filename)
+    print(f"Pruned Depth: {new_depth} & Span: {new_span}")
+    print(f"New Accuracy: {new_accuracy}")
 
-#     X_train, Y_train, X_test, Y_test = train_test_split(X, Y, 0.6, 42)
-#     # X_test, Y_test, X_cv, Y_cv = train_test_split(X_, Y_, 0.5, 42)
+    # Nested K-folds starts from here
+    accuracy, t_matrix, class_dict = compute_overall_average_nested_kfolds(eval_list)
 
-#     decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
-#     og_depth = get_tree_depth(decision_tree)
-#     og_span = count_leaves(decision_tree)
-#     og_accuracy = simple_compute_accuracy(decision_tree, X_test, Y_test)
-#     print(f"Original Depth: {og_depth} & Span: {og_span}")
-#     print(f"Original Accuracy: {og_accuracy}")
+    print("accuracy", accuracy)
+    print("t_matrix", t_matrix)
+    print("class_dict", class_dict) 
 
-    # visualize_tree(decision_tree, og_depth)
-   # eval_dict = evaluation(X_test, Y_test, decision_tree)
-    # tree_to_json(decision_tree, 'tree.json')
-    # decision_tree = json_to_tree('noisy_tree.json')
-    # visualize_tree(decision_tree, 11)
-    # print(f"Accuracy on test set: {accuracy*100}%")
-    #print(eval_dict)
+    # data = np.loadtxt(noisy_filename)
+    # print(make_data_folds(data, 42, k=10))
 
-
-#     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
-#     new_depth = get_tree_depth(pruned_tree)
-#     new_span = count_leaves(pruned_tree)
-#     new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
-
-#     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
-#     print(f"New Accuracy: {new_accuracy}")
-
-    #data = np.loadtxt(noisy_filename)
-    #print(make_data_folds(data, 42, k=10))
-
-#     # visualize_tree(pruned_tree, new_depth)
+    #visualize_tree(pruned_tree, new_depth)
