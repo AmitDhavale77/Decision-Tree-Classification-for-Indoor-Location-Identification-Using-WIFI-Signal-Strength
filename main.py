@@ -114,17 +114,13 @@ def make_data_folds_new(dataset, test_split, random_seed = 60012, k=10):
     # Return evaluation dictionary in the same format as above one but
     # averaged across the k folds
     # Create random generator
-
-
     random_generator = np.random.default_rng(random_seed)
 
-    # Create array of shuffled indices
     shuffled_indices = random_generator.permutation(len(dataset))
 
 
     data_shuffled = [dataset[i] for i in shuffled_indices] 
 
-    parts = np.array_split(data_shuffled, k, axis=0)
     test_parts = np.array_split(data_shuffled, k, axis=0)
 
     final_eval = {}
@@ -144,8 +140,18 @@ def make_data_folds_new(dataset, test_split, random_seed = 60012, k=10):
         Y_train = combined_data[:, -1]   # last column
 
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+        
+        val_test_x = test_part[:, :-1]
+        val_test_y = test_part[:, -1]
 
-        evaluation_metrics = evaluation(test_part[:,:-1], test_part[:,-1], decision_tree)
+        prune_tree1 = prune_tree(decision_tree, val_test_x, val_test_y)
+        
+        X_test = test_split[:, :-1]
+        Y_test = test_split[:, -1]
+        #print("prune", prune_tree1)
+
+
+        evaluation_metrics = evaluation(X_test, Y_test, prune_tree1)
 
         # add the confusion matrix
         final_eval['confusion_matrix'] = final_eval.get('confusion_matrix', 0) + evaluation_metrics['confusion_matrix']
@@ -178,8 +184,6 @@ def make_data_folds_new(dataset, test_split, random_seed = 60012, k=10):
 
 
     return final_eval
-
-
 
 
 def make_data_folds(dataset, random_seed, k=10):
@@ -512,12 +516,54 @@ if __name__ == "__main__":
     noisy_filename = 'wifi_db/noisy_dataset.txt'
 
 
-X_data, Y_data = load_data(noisy_filename)
+    X_data, Y_data = load_data(clean_filename)
 
-eval_list = nested_k_folds(X_data, Y_data, k=10, random_generator=np.random.default_rng(seed = 60012))
+    eval_list = nested_k_folds(X_data, Y_data, k=10, random_generator=np.random.default_rng(seed = 60012))
 
-print(np.shape(eval_list))
-print(eval_list)
+    print(np.shape(eval_list))
+    print(eval_list)
+
+
+    def get_metrics_label(eval_list, label):
+        precision_1 = []
+        recall_1 = []
+        F1_score_1 = []
+        for dic in eval_list:
+            precision_1.append(dic.get(label).get('precision'))
+            recall_1.append(dic.get(label).get('recall'))
+            F1_score_1.append(dic.get(label).get('f1'))
+        return np.mean(np.array(precision_1)), np.mean(np.array(recall_1)), np.mean(np.array(F1_score_1))
+            
+
+
+
+    def compute_overall_average_nested_kfolds(eval_list):
+        
+        t_matrix = np.zeros((4, 4))
+        
+        class_dict = {}
+        ls_classes = ["1.0", "2.0", "3.0", "4.0"]
+        t_accuracy = 0
+        for dic in eval_list:
+            matrix = dic.get("confusion_matrix")
+            t_matrix += matrix
+        
+        for dic in eval_list:
+            accuracy = dic.get("accuracy")
+            t_accuracy += accuracy
+
+        for label in ls_classes:
+            class_dict[label] = get_metrics_label(eval_list, label)
+
+        return t_accuracy/len(eval_list), t_matrix, class_dict
+
+    accuracy, t_matrix, class_dict = compute_overall_average_nested_kfolds(eval_list)
+
+    print("accuracy", accuracy)
+    print("t_matrix", t_matrix)
+    print("class_dict", class_dict) 
+
+
 
 # t_matrix = np.zeros((4, 4))
 # t_precision_1 = 0
@@ -545,7 +591,7 @@ print(eval_list)
 #     print(f"Original Accuracy: {og_accuracy}")
 
     # visualize_tree(decision_tree, og_depth)
-    eval_dict = evaluation(X_test, Y_test, decision_tree)
+   # eval_dict = evaluation(X_test, Y_test, decision_tree)
     # tree_to_json(decision_tree, 'tree.json')
     # decision_tree = json_to_tree('noisy_tree.json')
     # visualize_tree(decision_tree, 11)
@@ -561,7 +607,7 @@ print(eval_list)
 #     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
 #     print(f"New Accuracy: {new_accuracy}")
 
-    data = np.loadtxt(noisy_filename)
-    print(make_data_folds(data, 42, k=10))
+    #data = np.loadtxt(noisy_filename)
+    #print(make_data_folds(data, 42, k=10))
 
 #     # visualize_tree(pruned_tree, new_depth)
