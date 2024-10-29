@@ -17,9 +17,9 @@ def load_data(filename):
                    an integer representing room number from 0 to C-1 where C
                    is the number of classes
     """
-
-    X = np.loadtxt(filename, dtype=np.float64, usecols=(0, 1, 2, 3, 4, 5, 6))
-    Y = np.loadtxt(filename, usecols=(7)).astype(np.int64)
+    data = np.loadtxt(filename, dtype=np.float64)
+    X = data[:, :-1]
+    Y = data[:, -1]
     return X, Y
 
 

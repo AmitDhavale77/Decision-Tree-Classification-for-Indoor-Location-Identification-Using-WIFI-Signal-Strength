@@ -67,7 +67,7 @@ def find_split(X, Y):
     best_feature = None
     best_value = None
 
-    # TODO: confirm this?
+    # iterate through each feature
     for feature in range(X.shape[1]):
 
         # Sort X by feature

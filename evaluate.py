@@ -2,7 +2,6 @@ import numpy as np
 from decision_tree import predictions
 
 
-# TODO this is used in prune tree
 def simple_compute_accuracy(tree, X_test, Y_test):
     """Compute the accuracy given the ground truth and predictions
 
@@ -73,7 +72,9 @@ def compute_f1(precision, recall):
 
 def get_classification_evaluation(confusion_matrix, classification):
     """
-    Args: TODO
+    Args:
+        confusion_matrix np.array: confusion matrix
+        classification int: classification to evaluate
 
     Return: dict:  in format:
             {
@@ -98,8 +99,8 @@ def get_confusion_matrix(y_gold, y_prediction):
     create the confusion matrix from the true and predicted values
 
     Args:
-        y_gold: TODO
-        y_prediction
+        y_gold: np.array of correct values
+        y_prediction: np.array of predicted values
 
     Returns:
         np.array of size n_classifications x n_classifications

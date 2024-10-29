@@ -1,5 +1,4 @@
-import copy # TODO is this allowed?
-
+import copy # part of python standard library
 from evaluate import simple_compute_accuracy
 
 

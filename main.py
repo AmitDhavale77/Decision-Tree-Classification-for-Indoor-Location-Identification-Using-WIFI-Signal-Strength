@@ -76,7 +76,7 @@ if __name__ == "__main__":
     noisy_filename = "wifi_db/noisy_dataset.txt"
 
     demo_file = clean_filename
-    demo_k = 2
+    demo_k = 10
 
     ####################### demo a single tree (visulise)
     # uncomment to run visulisation of a single tree pre and post pruning
@@ -85,36 +85,5 @@ if __name__ == "__main__":
     ####################### Question 3
     run_question_3(filename=demo_file, k=demo_k)
 
-    ####################### Question 4
+    # ####################### Question 4
     run_question_4(filename=demo_file, k=demo_k)
-
-
-################################################################################################
-
-
-# eval_dict = evaluation(X_test, Y_test, decision_tree)
-# tree_to_json(decision_tree, "tree.json")
-# decision_tree = json_to_tree("noisy_tree.json")
-# visualize_tree(decision_tree, 11)
-# print(f"Accuracy on test set: {accuracy*100}%")
-# print(eval_dict)
-
-# pruned_tree = prune_tree(decision_tree, X_test, Y_test)
-# new_depth = get_tree_depth(pruned_tree)
-# new_span = count_leaves(pruned_tree)
-# new_accuracy = simple_compute_accuracy(pruned_tree, X_test, Y_test)
-
-# print(f"Pruned Depth: {new_depth} & Span: {new_span}")
-# print(f"New Accuracy: {new_accuracy}")
-
-# # Nested K-folds starts from here
-# accuracy, t_matrix, class_dict = compute_overall_average_nested_kfolds(eval_list)
-
-# print("accuracy", accuracy)
-# print("t_matrix", t_matrix)
-# print("class_dict", class_dict)
-
-# data = np.loadtxt(noisy_filename)
-# print(make_data_folds(data, 42, k=10))
-
-# visualize_tree(pruned_tree, new_depth)

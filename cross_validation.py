@@ -38,48 +38,56 @@ def nested_k_folds(X_data, Y_data, k=10, random_seed=60012):
         # split data and run inner loop of the nested k-folds
         test_data = dataset[test_split_ind, :]
         train_eval_data = dataset[train_indices, :]
-        eval_list.append(make_data_folds_new(train_eval_data, test_data))
+        eval_list.append(make_data_folds_pruned(train_eval_data, test_data, k))
 
     return eval_list
 
 
-def make_data_folds_new(dataset, test_split, random_seed=60012, k=10):
+def make_data_folds_pruned(dataset, test_split, random_seed=60012, k=10):
     """
-    TODO
+    Inner loop of the nested k-folds cross validation, creates tree, prunes 
+    using validation data and evaluates on test data
+
+    Args:
+        dataset: training and validation data
+        test_split: test data
+        random_seed: random seed
+        k: number of folds
     """
     random_generator = np.random.default_rng(random_seed)
 
+    # creating k folds from the train-val data (dataset)
     shuffled_indices = random_generator.permutation(len(dataset))
     data_shuffled = [dataset[i] for i in shuffled_indices]
-    test_parts = np.array_split(data_shuffled, k, axis=0)
+    train_val_folds = np.array_split(data_shuffled, k, axis=0)
 
+    # create list of class labels
     labels = np.unique(dataset[:, -1])
     classes = [str(classification) for classification in labels]
 
+    # iterating through each train-val fold
     final_eval = {}
-    for index, test_part in enumerate(test_parts):
-        other_test_parts = [
-            p for i, p in enumerate(test_parts) if i != index
-        ]  # exclude current part by index
+    for index, val_data in enumerate(train_val_folds):
+        # select data for training, excluding the current validation fold
+        train_data = [p for i, p in enumerate(train_val_folds) if i != index]
 
         # concatenate all other parts
-        combined_data = np.vstack(other_test_parts)
+        combined_train_data = np.vstack(train_data)
 
-        # separate features and labels
-        X_train = combined_data[:, :-1]  # all columns except the last
-        Y_train = combined_data[:, -1]  # last column
-
+        # separate features and labels for train data and train tree
+        X_train = combined_train_data[:, :-1]  # all columns except the last
+        Y_train = combined_train_data[:, -1]  # last column
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
 
-        val_test_x = test_part[:, :-1]
-        val_test_y = test_part[:, -1]
+        # seperate features and labels for validation data and prune tree
+        val_x = val_data[:, :-1]
+        val_y = val_data[:, -1]
+        pruned_tree = prune_tree(decision_tree, val_x, val_y)
 
-        prune_tree1 = prune_tree(decision_tree, val_test_x, val_test_y) ### TODO is this the difference
-
+        # separate features and labels for test data and evaluate tree
         X_test = test_split[:, :-1]
         Y_test = test_split[:, -1]
-
-        evaluation_metrics = evaluation(X_test, Y_test, prune_tree1)
+        evaluation_metrics = evaluation(X_test, Y_test, pruned_tree)
 
         # add the confusion matrix
         final_eval["confusion_matrix"] = (
@@ -87,6 +95,7 @@ def make_data_folds_new(dataset, test_split, random_seed=60012, k=10):
             + evaluation_metrics["confusion_matrix"]
         )
 
+        # update evaluation metrics
         # calculate sum of metrics for exach class
         for index_str in classes:
             for metric in ["precision", "recall"]:
@@ -98,7 +107,7 @@ def make_data_folds_new(dataset, test_split, random_seed=60012, k=10):
                     metric, 0
                 ) + evaluation_metrics[index_str].get(metric, 0)
 
-    # calculate averages across all folds
+    # average metrics across all folds
     for index_str in classes:
         for metric in ["precision", "recall"]:
             final_eval[index_str][metric] /= k
@@ -121,7 +130,12 @@ def make_data_folds_new(dataset, test_split, random_seed=60012, k=10):
 
 def make_data_folds(dataset, random_seed, k=10):
     """
-    TODO
+    Evalute a simple tree on k-folds of the dataset
+
+    Args:
+        dataset: dataset to split
+        random_seed: random seed
+        k: number of folds
     """
     # Create random generator
     random_generator = np.random.default_rng(random_seed)
@@ -134,6 +148,7 @@ def make_data_folds(dataset, random_seed, k=10):
     labels = np.unique(dataset[:, -1])
     classes = [str(classification) for classification in labels]
 
+    # iterate through each fold
     for index, test_part in enumerate(test_parts):
         other_test_parts = [
             p for i, p in enumerate(test_parts) if i != index
@@ -142,12 +157,12 @@ def make_data_folds(dataset, random_seed, k=10):
         # concatenate all other parts
         combined_data = np.vstack(other_test_parts)
 
-        # separate features and labels
+        # separate features and labels for training data and train tree
         X_train = combined_data[:, :-1]  # all columns except the last
         Y_train = combined_data[:, -1]  # last column
-
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
 
+        # evaluate tree on test data
         evaluation_metrics = evaluation(
             test_part[:, :-1], test_part[:, -1], decision_tree
         )
