@@ -4,7 +4,7 @@ from decision_tree import predictions
 
 # TODO this is used in prune tree
 def simple_compute_accuracy(tree, X_test, Y_test):
-    """ Compute the accuracy given the ground truth and predictions
+    """Compute the accuracy given the ground truth and predictions
 
     Args:
         y_gold (np.ndarray): the correct ground truth/gold standard labels
@@ -116,13 +116,13 @@ def get_confusion_matrix(y_gold, y_prediction):
 
 
 def compute_macroaverage(evaluation, classes):
-    """ 
+    """
     Compute the macroaverage of the class evaluation metrics
 
-    Args: 
+    Args:
         evaluation: dictionary of evaluation metrics
         classes: list of classes
-    
+
     Returns: dictionary of macroaveraged metrics
     """
     macroaverage = {
@@ -131,12 +131,15 @@ def compute_macroaverage(evaluation, classes):
         "f1": 0,
     }
     assert isinstance(evaluation, dict)
+    assert isinstance(classes, list)
+    assert isinstance(evaluation[classes[0]], dict)
+
     for classification in classes:
-        for metric in macroaverage:
-            if (
-                evaluation[classification][metric] is not None
-                and macroaverage[metric] is not None
-            ):
+        for metric in macroaverage.keys():
+            eval_metric_is_none = evaluation[classification][metric] is None
+            macroaverage_metric_is_none = macroaverage[metric] is None
+
+            if (not eval_metric_is_none) and (not macroaverage_metric_is_none):
                 macroaverage[metric] += evaluation[classification][metric]
             else:
                 macroaverage[metric] = None
@@ -181,7 +184,7 @@ def evaluation(x_test, y_test, trained_tree):
     return evaluation
 
 
-def compute_average_evaluation(eval_list):
+def compute_average_evaluation(eval_list, classes):
     """
     Compute the average evaluation metrics from a list of evaluation dictionaries
 
@@ -193,7 +196,6 @@ def compute_average_evaluation(eval_list):
     """
     # initialise
     confusion_matrix = np.zeros((4, 4))
-    ls_classes = ["1.0", "2.0", "3.0", "4.0"]
     accuracy = 0
 
     # iterate through evaluations to get accuracy and confusion matrix
@@ -205,11 +207,11 @@ def compute_average_evaluation(eval_list):
     eval_dict = {"accuracy": accuracy, "confusion_matrix": confusion_matrix}
 
     # get class metrics
-    for label in ls_classes:
+    for label in classes:
         eval_dict[label] = get_metrics_label(eval_list, label)
 
     # get overall metrics (macroaverage)
-    eval_dict["overall"] = compute_macroaverage(eval_dict, ls_classes)
+    eval_dict["overall"] = compute_macroaverage(eval_dict, classes)
 
     return eval_dict
 
@@ -218,6 +220,14 @@ def get_metrics_label(eval_list, label):
     """
     Get the average metrics for a class from a list of evaluation dictionaries
     """
+    assert isinstance(label, str), f"label must be a string, {label} is not a string"
+    assert isinstance(
+        eval_list, list
+    ), f"eval_list must be a list, {eval_list} is not a list"
+    assert all(
+        isinstance(dic, dict) for dic in eval_list
+    ), f"all elements in eval_list must be dictionaries"
+
     precision = []
     recall = []
     F1_score = []
@@ -230,7 +240,7 @@ def get_metrics_label(eval_list, label):
     mean_recall = sum(recall) / len(recall)
     mean_F1_score = sum(F1_score) / len(F1_score)
 
-    return (mean_precision, mean_recall, mean_F1_score)
+    return {"precision": mean_precision, "recall":mean_recall, "f1":mean_F1_score}
 
 
 def show_confusion_matrix(confusion_matrix):
@@ -242,19 +252,22 @@ def show_confusion_matrix(confusion_matrix):
         print(f"True class {classification}:  {row}")
 
 
+def report_class_metrics(eval_dict, classification):
+    """Print the metrics for a single classification"""
+    print(f"    Recall: {eval_dict[classification]['recall']* 100:.2f}%")
+    print(f"    Precision: {eval_dict[classification]['precision']* 100:.2f}%")
+    print(f"    F1: {eval_dict[classification]['f1']* 100:.2f}%")
+
+
 def report_evaluation(eval_dict):
     """Print a well formatted evaluation report"""
-    print(f"Accuracy: {eval_dict['accuracy'] * 100:.1f}%")
+    print(f"Accuracy: {eval_dict['accuracy'] * 100:.2f}%")
     show_confusion_matrix(eval_dict["confusion_matrix"])
 
     for classification in eval_dict:
         if classification not in ["accuracy", "confusion_matrix", "overall"]:
             print(f"Classification: {classification}")
-            print(f"    Recall: {eval_dict[classification]['recall']:.2f}")
-            print(f"    Precision: {eval_dict[classification]['precision']:.2f}")
-            print(f"    F1: {eval_dict[classification]['f1']:.2f}")
+            report_class_metrics(eval_dict, classification)
         elif classification == "overall":
             print(f"Overall:")
-            print(f"    Recall: {eval_dict[classification]['recall']:.2f}")
-            print(f"    Precision: {eval_dict[classification]['precision']:.2f}")
-            print(f"    F1: {eval_dict[classification]['f1']:.2f}")
+            report_class_metrics(eval_dict, classification)

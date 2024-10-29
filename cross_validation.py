@@ -74,7 +74,7 @@ def make_data_folds_new(dataset, test_split, random_seed=60012, k=10):
         val_test_x = test_part[:, :-1]
         val_test_y = test_part[:, -1]
 
-        prune_tree1 = prune_tree(decision_tree, val_test_x, val_test_y)
+        prune_tree1 = prune_tree(decision_tree, val_test_x, val_test_y) ### TODO is this the difference
 
         X_test = test_split[:, :-1]
         Y_test = test_split[:, -1]
