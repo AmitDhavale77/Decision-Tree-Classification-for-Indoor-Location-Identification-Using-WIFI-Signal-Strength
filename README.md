@@ -34,7 +34,7 @@ This script contains functions to determine the confusion matrix, accuracy and o
 
 #### `cross_validation.py`
 
-This script contains functions to do nested k folds cross-validation.
+This script contains functions to perform regular k folds and nested k folds cross-validation.
 
 ## Instructions
 
