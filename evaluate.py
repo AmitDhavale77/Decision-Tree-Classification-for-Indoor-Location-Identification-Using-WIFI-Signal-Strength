@@ -1,6 +1,8 @@
 import numpy as np
+from decision_tree import predictions
 
 
+# TODO this is used in prune tree
 def simple_compute_accuracy(tree, X_test, Y_test):
     """ Compute the accuracy given the ground truth and predictions
 
@@ -20,50 +22,6 @@ def simple_compute_accuracy(tree, X_test, Y_test):
         return 0
 
     return round(np.sum(Y_test == y_predictions) / len(Y_test), 2)
-
-
-def predictions(tree, test_x):
-    """
-    Predict output values from a tree using a test set
-
-    Args:
-        tree(dict): trained decision tree dictionary
-        test_x(np.array): array of x features to get classification predictions from the tree
-
-    Returns:
-        np.array: array of size len(test_x) of output predictions from tree
-
-    """
-
-    num_rows, _ = test_x.shape
-    predictions = np.zeros((num_rows,))
-
-    for row in range(num_rows):
-        test_row = test_x[row, :]
-        predictions[row] = row_predict(tree, test_row)
-
-    return predictions
-
-
-def row_predict(tree, test_row):
-    """
-    Make a prediction for a single row on an input dataset using a trained tree
-
-    Args:
-        tree(dict): trained decision tree dictionary
-        test_row(np.array): single row of an np.array to make a decision from
-    """
-
-    if tree["feature"] is None:
-        return tree["value"]
-
-    cur_feature = tree["feature"]
-    cur_value = tree["value"]
-    go_right = test_row[cur_feature] > cur_value
-    if go_right:
-        return row_predict(tree['right'], test_row)
-    else:
-        return row_predict(tree['left'], test_row)
 
 
 def compute_accuracy(confusion_matrix):
@@ -157,17 +115,16 @@ def get_confusion_matrix(y_gold, y_prediction):
     return confusion_matrix
 
 
-def show_confusion_matrix(confusion_matrix):
-    """
-    Print the confusion matrix in an easy to read format
-    """
-    print(f"Prediction class: {list(range(confusion_matrix.shape[0]))}")
-    for classification, row in enumerate(confusion_matrix):
-        print(f"True class {classification}:  {row}")
-
-
 def compute_macroaverage(evaluation, classes):
-    """ """
+    """ 
+    Compute the macroaverage of the class evaluation metrics
+
+    Args: 
+        evaluation: dictionary of evaluation metrics
+        classes: list of classes
+    
+    Returns: dictionary of macroaveraged metrics
+    """
     macroaverage = {
         "precision": 0,
         "recall": 0,
@@ -236,20 +193,25 @@ def compute_average_evaluation(eval_list):
     """
     # initialise
     confusion_matrix = np.zeros((4, 4))
-    class_dict = {}
     ls_classes = ["1.0", "2.0", "3.0", "4.0"]
-    t_accuracy = 0
+    accuracy = 0
 
-    # iterate thrpugh evaluations to get accuracy and confusion matrix
+    # iterate through evaluations to get accuracy and confusion matrix
     for eval in eval_list:
         confusion_matrix += eval.get("confusion_matrix")
-        t_accuracy += eval.get("accuracy")
-    t_accuracy = t_accuracy / len(eval_list)
+        accuracy += eval.get("accuracy")
+    accuracy = accuracy / len(eval_list)
 
+    eval_dict = {"accuracy": accuracy, "confusion_matrix": confusion_matrix}
+
+    # get class metrics
     for label in ls_classes:
-        class_dict[label] = get_metrics_label(eval_list, label)
+        eval_dict[label] = get_metrics_label(eval_list, label)
 
-    return t_accuracy, confusion_matrix, class_dict
+    # get overall metrics (macroaverage)
+    eval_dict["overall"] = compute_macroaverage(eval_dict, ls_classes)
+
+    return eval_dict
 
 
 def get_metrics_label(eval_list, label):
@@ -269,3 +231,30 @@ def get_metrics_label(eval_list, label):
     mean_F1_score = sum(F1_score) / len(F1_score)
 
     return (mean_precision, mean_recall, mean_F1_score)
+
+
+def show_confusion_matrix(confusion_matrix):
+    """
+    Print the confusion matrix in an easy to read format
+    """
+    print(f"Prediction class: {list(range(confusion_matrix.shape[0]))}")
+    for classification, row in enumerate(confusion_matrix):
+        print(f"True class {classification}:  {row}")
+
+
+def report_evaluation(eval_dict):
+    """Print a well formatted evaluation report"""
+    print(f"Accuracy: {eval_dict['accuracy'] * 100:.1f}%")
+    show_confusion_matrix(eval_dict["confusion_matrix"])
+
+    for classification in eval_dict:
+        if classification not in ["accuracy", "confusion_matrix", "overall"]:
+            print(f"Classification: {classification}")
+            print(f"    Recall: {eval_dict[classification]['recall']:.2f}")
+            print(f"    Precision: {eval_dict[classification]['precision']:.2f}")
+            print(f"    F1: {eval_dict[classification]['f1']:.2f}")
+        elif classification == "overall":
+            print(f"Overall:")
+            print(f"    Recall: {eval_dict[classification]['recall']:.2f}")
+            print(f"    Precision: {eval_dict[classification]['precision']:.2f}")
+            print(f"    F1: {eval_dict[classification]['f1']:.2f}")

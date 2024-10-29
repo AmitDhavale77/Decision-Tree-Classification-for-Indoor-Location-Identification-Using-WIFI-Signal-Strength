@@ -182,3 +182,47 @@ def get_tree_depth(tree):
     if tree is None or tree["feature"] is None:
         return 0
     return 1 + max(get_tree_depth(tree["left"]), get_tree_depth(tree["right"]))
+
+
+def predictions(tree, test_x):
+    """
+    Predict output values from a tree using a test set
+
+    Args:
+        tree(dict): trained decision tree dictionary
+        test_x(np.array): array of x features to get classification predictions from the tree
+
+    Returns:
+        np.array: array of size len(test_x) of output predictions from tree
+
+    """
+
+    num_rows, _ = test_x.shape
+    predictions = np.zeros((num_rows,))
+
+    for row in range(num_rows):
+        test_row = test_x[row, :]
+        predictions[row] = row_predict(tree, test_row)
+
+    return predictions
+
+
+def row_predict(tree, test_row):
+    """
+    Make a prediction for a single row on an input dataset using a trained tree
+
+    Args:
+        tree(dict): trained decision tree dictionary
+        test_row(np.array): single row of an np.array to make a decision from
+    """
+
+    if tree["feature"] is None:
+        return tree["value"]
+
+    cur_feature = tree["feature"]
+    cur_value = tree["value"]
+    go_right = test_row[cur_feature] > cur_value
+    if go_right:
+        return row_predict(tree['right'], test_row)
+    else:
+        return row_predict(tree['left'], test_row)

@@ -1,4 +1,4 @@
-import copy
+import copy # TODO is this allowed?
 
 from evaluate import simple_compute_accuracy
 
