@@ -53,7 +53,7 @@ Configuration Options:
 
 #### run_demo()
 
-This will train a decision tre and repot the evaluation metris of a demo unpruned and pruned tree.
+This will train a decision tree and report the evaluation metris of a demo unpruned and pruned tree.
 
 #### run_question_3()
 
