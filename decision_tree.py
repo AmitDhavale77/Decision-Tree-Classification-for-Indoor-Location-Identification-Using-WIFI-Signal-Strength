@@ -1,6 +1,7 @@
 import numpy as np
 from data_prep import sort_data, split_data
 
+
 def create_node(feature, value, left, right):
     """Given node attributes, instantiate the node as a dictionary"""
     node = {

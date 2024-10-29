@@ -25,12 +25,11 @@ def run_demo(filename, test_proportion=0.6, random_seed=42):
     eval_dict = evaluation(X_test, Y_test, decision_tree)
 
     # report tree size, evaluation metrics and visualize tree
-    og_depth = get_tree_depth(decision_tree)
     og_span = count_leaves(decision_tree)
-    print(f"Example of a tree without pruning")
-    print(f"Original Depth: {og_depth} & Span: {og_span}")
+    print("Example of a tree without pruning")
+    print(f"Original Depth: {tree_depth} & Span: {og_span}")
     report_evaluation(eval_dict)
-    visualize_tree(decision_tree, og_depth)
+    # visualize_tree(decision_tree, og_depth)  # Uncomment to visualize tree
 
     # prune tree and evaluate
     pruned_tree = prune_tree(decision_tree, X_test, Y_test)
@@ -42,17 +41,16 @@ def run_demo(filename, test_proportion=0.6, random_seed=42):
     print("Example of a single tree with pruning:")
     print(f"Pruned Depth: {new_depth} & Span: {new_span}")
     report_evaluation(eval_dict)
-    visualize_tree(pruned_tree, new_depth)
 
 
-def run_question_3(filename, test_proportion=0.6, random_seed=42, k=10):
+def run_question_3(filename, random_seed=42, k=10):
     """Run question 3 of the coursework, cross validation and pruning"""
     print("\n\n\n\n         Question 3")
 
     # run prune cross validation
-    print("\nExample of k-folds to evaluate trees:")
+    print(f"\nExample of k-folds to evaluate trees. Using k={k}:")
     data = np.loadtxt(filename)
-    eval_dict = make_data_folds(data, 42, k=k)
+    eval_dict = make_data_folds(data, random_seed, k=k)
     report_evaluation(eval_dict)
 
 
@@ -79,11 +77,11 @@ if __name__ == "__main__":
     demo_k = 10
 
     ####################### demo a single tree (visulise)
-    # uncomment to run visulisation of a single tree pre and post pruning
-    # run_demo(filename=demo_file)
+    # uncomment to run traiing of a single tree pre and post pruning
+    run_demo(filename=clean_filename)
 
     ####################### Question 3
-    run_question_3(filename=demo_file, k=demo_k)
+    # run_question_3(filename=demo_file, k=demo_k)
 
     # ####################### Question 4
-    run_question_4(filename=demo_file, k=demo_k)
+    # run_question_4(filename=demo_file, k=demo_k)
