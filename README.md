@@ -1,4 +1,4 @@
-# Introduction to Machine Learning Decision tree coursework
+# Decision Tree Coursework
 
 This code will produce all of the outputs required to answer the questions in 
 the coursework, and optionally generating a visulisation of a decision tree. 
