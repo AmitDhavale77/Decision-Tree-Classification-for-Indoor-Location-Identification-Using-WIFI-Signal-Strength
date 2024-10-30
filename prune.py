@@ -14,6 +14,7 @@ def prune_tree(tree, X_test, Y_test):
     while nodes_with_two_leaves:
         node = nodes_with_two_leaves.pop()  # Get node to evaluate
 
+        # Skip if already checked, else add to visited set
         if node in nodes_visited:
             continue
         nodes_visited.add(node)
@@ -23,6 +24,8 @@ def prune_tree(tree, X_test, Y_test):
         # Right tree will replace the node by the right child
         tmp_tree_left = copy.deepcopy(tree)
         tmp_tree_right = copy.deepcopy(tree)
+
+        # Replace the nodes
         replace_node(tmp_tree_left, node, use_right=False)
         replace_node(tmp_tree_right, node, use_right=True)
 
@@ -49,15 +52,25 @@ def prune_tree(tree, X_test, Y_test):
     return tree
 
 def find_nodes_with_two_leaves(tree, matching_nodes):
-    """ Recursively identifies nodes with exactly two leaves """
+    """ Given a tree, recursively find all nodes of the tree that are directly connected to
+    two leaves
+    """
+
+    # Current node is a leaf so return
     if tree['feature'] is None:
         return
+
+    # Current node is connected to two leaves
     if tree['left']['feature'] is None and tree['right']['feature'] is None:
         matching_nodes.append((tree['feature'], tree['value']))
         return matching_nodes
+
+    # Recursively call on the left and right sub-trees
     find_nodes_with_two_leaves(tree['left'], matching_nodes)
     find_nodes_with_two_leaves(tree['right'], matching_nodes)
+
     return matching_nodes
+
 
 def replace_node(tree, node, use_right=True):
     """ Given a tree and a node, find that node in the tree and replace it with
