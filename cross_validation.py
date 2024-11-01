@@ -2,6 +2,7 @@ import numpy as np
 from decision_tree import decision_tree_learning
 from evaluate import evaluation, compute_accuracy, compute_f1, compute_macroaverage
 from prune import prune_tree
+from decision_tree import get_tree_depth, count_leaves
 
 
 def nested_k_folds(X_data, Y_data, k=10, random_seed=60012):
@@ -17,6 +18,10 @@ def nested_k_folds(X_data, Y_data, k=10, random_seed=60012):
     Returns:
         eval_list: list of dictionaries of evaluation metrics for each fold
     """
+    pre_pruned_depths = []
+    post_pruned_depths = []
+    pre_pruned_spans = []
+    post_pruned_spans = []
     # Create random generator
     random_generator = np.random.default_rng(random_seed)
 
@@ -38,9 +43,20 @@ def nested_k_folds(X_data, Y_data, k=10, random_seed=60012):
         # split data and run inner loop of the nested k-folds
         test_data = dataset[test_split_ind, :]
         train_eval_data = dataset[train_indices, :]
-        eval_list.append(make_data_folds_pruned(train_eval_data, test_data, k))
+        output = make_data_folds_pruned(train_eval_data, test_data, k)
+        eval_list.append(output[0])
+        pre_pruned_depths.extend(output[1])
+        post_pruned_depths.extend(output[2])
+        pre_pruned_spans.extend(output[3])
+        post_pruned_spans.extend(output[4])
 
-    return eval_list
+    mean_pre_pruned_depths = np.mean(pre_pruned_depths)
+    mean_post_pruned_depths = np.mean(post_pruned_depths)
+    mean_pre_pruned_spans = np.mean(pre_pruned_spans)
+    mean_post_pruned_spans = np.mean(post_pruned_spans)
+
+
+    return eval_list, mean_pre_pruned_depths, mean_post_pruned_depths, mean_pre_pruned_spans, mean_post_pruned_spans
 
 
 def make_data_folds_pruned(dataset, test_split, random_seed=60012, k=10):
@@ -54,6 +70,10 @@ def make_data_folds_pruned(dataset, test_split, random_seed=60012, k=10):
         random_seed: random seed
         k: number of folds
     """
+    pre_pruned_depths = []
+    post_pruned_depths = []
+    pre_pruned_spans = []
+    post_pruned_spans = []
     random_generator = np.random.default_rng(random_seed)
 
     # creating k folds from the train-val data (dataset)
@@ -78,11 +98,18 @@ def make_data_folds_pruned(dataset, test_split, random_seed=60012, k=10):
         X_train = combined_train_data[:, :-1]  # all columns except the last
         Y_train = combined_train_data[:, -1]  # last column
         decision_tree, tree_depth = decision_tree_learning(X_train, Y_train)
+        pre_pruned_span = count_leaves(decision_tree)
+        pre_pruned_depths.append(tree_depth)
+        pre_pruned_spans.append(pre_pruned_span)
 
         # seperate features and labels for validation data and prune tree
         val_x = val_data[:, :-1]
         val_y = val_data[:, -1]
         pruned_tree = prune_tree(decision_tree, val_x, val_y)
+        post_prune_depth = get_tree_depth(pruned_tree)
+        post_pruned_depths.append(post_prune_depth)
+        post_pruned_span = count_leaves(pruned_tree)
+        post_pruned_spans.append(post_pruned_span)
 
         # separate features and labels for test data and evaluate tree
         X_test = test_split[:, :-1]
@@ -125,7 +152,7 @@ def make_data_folds_pruned(dataset, test_split, random_seed=60012, k=10):
     for metric in macro_avg:
         final_eval["overall"][metric] = macro_avg[metric]
 
-    return final_eval
+    return final_eval, pre_pruned_depths, post_pruned_depths, pre_pruned_spans, post_pruned_spans
 
 
 def make_data_folds(dataset, random_seed, k=10):

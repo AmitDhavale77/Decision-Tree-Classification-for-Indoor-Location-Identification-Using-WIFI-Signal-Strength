@@ -60,12 +60,16 @@ def run_question_4(filename, k=10, random_seed=60012):
 
     # load data and run nested k-folds
     X, Y = load_data(filename)
-    eval_list = nested_k_folds(X, Y, k, random_seed)
+    eval_list, mean_pre_pruned_depths, mean_post_pruned_depths, mean_pre_pruned_spans, mean_post_pruned_spans = nested_k_folds(X, Y, k, random_seed)
     classes = [str(float(classification)) for classification in np.unique(Y)]
 
     # report the average results of the k sets of trees
     eval_dict = compute_average_evaluation(eval_list, classes)
     report_evaluation(eval_dict)
+    print(f"Average depth of trees before pruning: {mean_pre_pruned_depths}")
+    print(f"Average span of trees before pruning: {mean_pre_pruned_spans}")
+    print(f"Average depth of trees after pruning: {mean_post_pruned_depths}")
+    print(f"Average span of trees after pruning: {mean_post_pruned_spans}")
 
 
 if __name__ == "__main__":
@@ -78,10 +82,10 @@ if __name__ == "__main__":
 
     ####################### demo a single tree (visulise)
     # uncomment to run traiing of a single tree pre and post pruning
-    run_demo(filename=clean_filename)
+    #run_demo(filename=clean_filename)
 
     ####################### Question 3
-    # run_question_3(filename=demo_file, k=demo_k)
+    run_question_3(filename=demo_file, k=demo_k)
 
     # ####################### Question 4
-    # run_question_4(filename=demo_file, k=demo_k)
+    run_question_4(filename=demo_file, k=demo_k)
